@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghode Ki Chaal · Android UI Mockups</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Yatra+One&family=Gantari:wght@400;500;600;700&display=swap');
+
+/* ============ Palette — reconstructed from README/DECISIONS identity ============ */
+:root{
+  --walnut-deep:#241407;      /* app background, deep mahogany            */
+  --walnut:#3E2412;           /* panels, HUD wood                          */
+  --walnut-edge:#5A3A1E;      /* bevel highlight                           */
+  --oak-light:#C99C63;        /* light board squares, honey oak            */
+  --oak-dark:#8A5A2E;         /* dark board squares                        */
+  --parchment:#F2E3C4;        /* primary text on dark                      */
+  --parchment-dim:#C9B58F;    /* secondary text                            */
+  --amber:#FFB84D;            /* hint glow / accent / timer                */
+  --pyro:#4A2A12;             /* burnt-in path + carve lines               */
+  --lac-red:#B5442C;          /* Channapatna lacquer red — loss / restart  */
+  --lac-green:#5E7C3A;        /* lacquer green — win                       */
+  --display:'Yatra One', Georgia, serif;
+  --body:'Gantari', 'Segoe UI', system-ui, sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #3a2310 0%, transparent 60%),
+    #17100a;
+  font-family:var(--body);
+  color:var(--parchment);
+  padding:48px 32px 72px;
+}
+
+/* ============ Gallery chrome ============ */
+.gallery-head{max-width:1200px;margin:0 auto 40px}
+.gallery-head h1{
+  font-family:var(--display);font-size:clamp(28px,4vw,44px);
+  color:var(--parchment);letter-spacing:.5px;font-weight:400;
+}
+.gallery-head h1 em{color:var(--amber);font-style:normal}
+.gallery-head p{color:var(--parchment-dim);margin-top:8px;max-width:640px;line-height:1.55;font-size:15px}
+.frames{
+  display:flex;gap:44px;overflow-x:auto;padding:8px 8px 32px;
+  max-width:1400px;margin:0 auto;scroll-snap-type:x proximity;
+}
+.frame-slot{flex:0 0 auto;scroll-snap-align:center}
+.frame-label{
+  text-align:center;margin-top:16px;font-size:13px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--parchment-dim);font-weight:600;
+}
+.frame-label b{color:var(--amber);font-weight:700}
+
+/* ============ Phone frame (portrait, Android 10+) ============ */
+.phone{
+  width:340px;height:736px;border-radius:34px;position:relative;
+  background:#0c0805;
+  border:3px solid #35251a;
+  box-shadow:0 24px 60px rgba(0,0,0,.65), inset 0 0 0 2px #000;
+  overflow:hidden;
+}
+.phone::before{ /* punch-hole camera */
+  content:"";position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:10px;height:10px;border-radius:50%;background:#000;
+  box-shadow:inset 0 0 2px 1px #1c1c1c;z-index:50;
+}
+.screen{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  background:
+    radial-gradient(140% 90% at 50% 0%, #43290f 0%, var(--walnut-deep) 55%),
+    var(--walnut-deep);
+}
+/* faint wood grain over every screen */
+.screen::after{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.09;
+  background:repeating-linear-gradient(94deg, transparent 0 7px, #000 7px 8px, transparent 8px 15px);
+}
+
+/* ============ Shared components ============ */
+.wood-btn{
+  font-family:var(--body);font-weight:700;font-size:15px;letter-spacing:.04em;
+  color:var(--parchment);text-align:center;
+  background:linear-gradient(180deg, var(--walnut-edge) 0%, var(--walnut) 45%, #2e1a0c 100%);
+  border:1px solid #6b4626;border-radius:12px;
+  padding:13px 18px;
+  box-shadow:0 3px 0 #1a0f06, inset 0 1px 0 rgba(255,220,170,.25);
+  position:relative;
+}
+.wood-btn.primary{
+  background:linear-gradient(180deg,#e0b06a 0%, #c9924a 45%, #a06a2b 100%);
+  color:#2b1708;border-color:#7c5222;
+  box-shadow:0 3px 0 #5a3a14, inset 0 1px 0 rgba(255,240,210,.6);
+}
+.wood-btn.danger{
+  background:linear-gradient(180deg,#c95a3e 0%, var(--lac-red) 55%, #8a3020 100%);
+  border-color:#7c2c1c; box-shadow:0 3px 0 #5c1e12, inset 0 1px 0 rgba(255,210,190,.4);
+}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;color:var(--parchment-dim);
+  background:rgba(0,0,0,.28);border:1px solid #513521;border-radius:999px;
+  padding:6px 12px;
+}
+.chip b{color:var(--amber);font-weight:700}
+
+/* segmented selector (board size / difficulty) */
+.seg{display:flex;gap:8px}
+.seg .opt{
+  flex:1;text-align:center;font-size:13px;font-weight:700;padding:10px 6px;
+  color:var(--parchment-dim);border:1px solid #513521;border-radius:10px;
+  background:rgba(0,0,0,.25);
+}
+.seg .opt.on{
+  color:#2b1708;border-color:#7c5222;
+  background:linear-gradient(180deg,#e0b06a,#b98440);
+  box-shadow:inset 0 1px 0 rgba(255,240,210,.55), 0 2px 0 #5a3a14;
+}
+.field-label{
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--parchment-dim);font-weight:700;margin-bottom:8px;
+}
+
+/* toggle */
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 2px}
+.toggle .t-name{font-size:15px;font-weight:600}
+.toggle .t-sub{font-size:12px;color:var(--parchment-dim);margin-top:2px}
+.knob{
+  width:46px;height:26px;border-radius:999px;position:relative;flex:0 0 auto;
+  background:#241608;border:1px solid #513521;
+}
+.knob::after{
+  content:"";position:absolute;top:2px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(180deg,#8a6a45,#5c4327);
+  box-shadow:0 1px 2px rgba(0,0,0,.6);
+}
+.knob.on{background:linear-gradient(180deg,#c98f3e,#9c6a24);border-color:#7c5222}
+.knob.on::after{left:auto;right:3px;background:linear-gradient(180deg,#ffe9c2,#e6b871)}
+
+/* ============ Board ============ */
+.board-wrap{position:relative;margin:0 auto;
+  padding:9px;border-radius:14px;
+  background:linear-gradient(160deg,#6b4626 0%, #3a2410 60%, #57371c 100%);
+  box-shadow:0 8px 22px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,220,170,.3);
+}
+.board{
+  display:grid;position:relative;border-radius:6px;overflow:hidden;
+  box-shadow:inset 0 0 0 2px #2b1708;
+}
+.board.n5{grid-template-columns:repeat(5,56px);grid-template-rows:repeat(5,56px)}
+.sq{position:relative}
+.sq.l{background:
+  repeating-linear-gradient(96deg, rgba(0,0,0,.05) 0 6px, transparent 6px 13px),
+  linear-gradient(180deg,#d3a86e,#c2955c)}
+.sq.d{background:
+  repeating-linear-gradient(88deg, rgba(0,0,0,.08) 0 6px, transparent 6px 12px),
+  linear-gradient(180deg,#93633a,#7e5228)}
+/* visited squares keep a small carved horse */
+.sq .mini-horse{position:absolute;inset:16%;opacity:.92;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.45))}
+.sq.visited::after{ /* subtle darkened, "used" square */
+  content:"";position:absolute;inset:0;background:rgba(40,20,5,.18);
+}
+/* current square + big horse */
+.sq.current{box-shadow:inset 0 0 0 3px var(--amber)}
+.sq .big-horse{position:absolute;inset:6%;filter:drop-shadow(0 4px 3px rgba(0,0,0,.55));z-index:4}
+/* legal move highlight (Knight difficulty) */
+.sq.legal::before{
+  content:"";position:absolute;inset:5px;border-radius:8px;z-index:3;
+  border:2px dashed rgba(255,184,77,.95);
+  background:radial-gradient(circle at 50% 50%, rgba(255,184,77,.30), rgba(255,184,77,.06) 70%);
+  animation:pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.65}50%{opacity:1}}
+/* dashed pyrography path overlay */
+.path-svg{position:absolute;inset:9px;z-index:2;pointer-events:none}
+.path-svg polyline{
+  fill:none;stroke:var(--pyro);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:7 8;opacity:.85;
+}
+.path-svg circle{fill:var(--pyro);opacity:.8}
+
+/* ============ HUD ============ */
+.hud{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:6px;
+  background:linear-gradient(180deg,#4a2d15,#33200f);
+  border:1px solid #5f3e21;border-radius:12px;padding:8px 6px;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.22), 0 3px 8px rgba(0,0,0,.4);
+}
+.hud .cell{text-align:center}
+.hud .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--parchment-dim);font-weight:700}
+.hud .v{font-size:15px;font-weight:700;color:var(--parchment);margin-top:2px;font-variant-numeric:tabular-nums}
+.hud .v.hot{color:var(--amber)}
+
+/* game action row */
+.actions{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.actions .wood-btn{padding:11px 4px;font-size:12.5px}
+
+/* status bar mock */
+.status{
+  height:26px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;font-size:11px;color:var(--parchment-dim);font-weight:600;
+  position:relative;z-index:5;
+}
+
+/* screen paddings */
+.body-pad{flex:1;display:flex;flex-direction:column;padding:10px 18px 18px;position:relative;z-index:5}
+
+/* ============ Menu specifics ============ */
+.title-block{text-align:center;margin:6px 0 4px}
+.title-hindi{
+  font-family:var(--display);font-size:34px;color:var(--parchment);
+  text-shadow:0 2px 0 #1a0d04, 0 0 24px rgba(255,184,77,.18);line-height:1.1;font-weight:400;
+}
+.title-sub{
+  font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--amber);
+  font-weight:700;margin-top:6px;
+}
+.hero-horse{width:104px;height:104px;margin:8px auto 2px;display:block;filter:drop-shadow(0 8px 8px rgba(0,0,0,.55))}
+.menu-stack{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+
+/* ============ Banner (loss, non-blocking, below board) ============ */
+.stuck-banner{
+  border-radius:12px;padding:12px 14px;
+  background:linear-gradient(180deg,#8a3826,#6e2a1a);
+  border:1px solid #a5503a;
+  box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,200,180,.28);
+}
+.stuck-banner .t{font-family:var(--display);font-size:17px;color:#ffe3d2;font-weight:400}
+.stuck-banner .s{font-size:12px;color:#f3c9ba;margin-top:3px;line-height:1.45}
+
+/* ============ Pause overlay ============ */
+.dim{position:absolute;inset:0;background:rgba(10,5,2,.72);z-index:20;backdrop-filter:blur(1px)}
+.sheet{
+  position:absolute;left:14px;right:14px;top:88px;z-index:21;
+  background:linear-gradient(180deg,#4a2d15,#31200f);
+  border:1px solid #6b4626;border-radius:18px;padding:18px;
+  box-shadow:0 18px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,220,170,.25);
+}
+.sheet h3{font-family:var(--display);font-weight:400;font-size:22px;text-align:center;margin-bottom:6px}
+.sheet .divider{height:1px;background:linear-gradient(90deg,transparent,#6b4626,transparent);margin:8px 0}
+
+/* ============ Result (win) ============ */
+.win-burst{
+  width:130px;height:130px;margin:4px auto;position:relative;
+}
+.win-burst svg{position:absolute;inset:0}
+.result-stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;
+}
+.stat-card{
+  background:rgba(0,0,0,.28);border:1px solid #513521;border-radius:12px;
+  padding:12px;text-align:center;
+}
+.stat-card .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--parchment-dim);font-weight:700}
+.stat-card .v{font-size:20px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat-card .v.gold{color:var(--amber)}
+.newbest{
+  margin:12px auto 0;display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:#2b1708;background:linear-gradient(180deg,#ffd98a,#e8ab4b);
+  border:1px solid #8a6020;border-radius:999px;padding:7px 16px;
+  box-shadow:0 3px 0 #5a3a14;
+}
+
+/* ============ Instructions ============ */
+.rule{display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+.rule .ic{
+  flex:0 0 34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.3);border:1px solid #513521;font-size:16px;
+}
+.rule .tx b{display:block;font-size:14px;margin-bottom:2px}
+.rule .tx span{font-size:12.5px;color:var(--parchment-dim);line-height:1.5}
+.lmove{
+  display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);
+  margin:10px auto;border-radius:6px;overflow:hidden;position:relative;
+  box-shadow:inset 0 0 0 2px #2b1708, 0 6px 16px rgba(0,0,0,.5);
+}
+.back-row{display:flex;align-items:center;gap:10px;padding:4px 0 2px}
+.back-btn{
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,var(--walnut-edge),#2e1a0c);border:1px solid #6b4626;
+  color:var(--parchment);font-size:16px;font-weight:700;
+}
+.screen-title{font-family:var(--display);font-size:20px;font-weight:400}
+</style>
+</head>
+<body>
+
+<div class="gallery-head">
+  <h1>Ghode Ki Chaal <em>·</em> The Horse Tour — Android Mockups</h1>
+  <p>Six screens grounded in the shipped web build: screen flow from <code>App.jsx</code> (menu ⇄ instructions, menu → playing → result), difficulty labels from <code>uiOptions.js</code>, board/HUD behaviour from README &amp; DECISIONS. Portrait, Android&nbsp;10+.</p>
+</div>
+
+<!-- Reusable carved horse SVG defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="woodH" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B07A3E"/>
+      <stop offset=".5" stop-color="#8A5A2E"/>
+      <stop offset="1" stop-color="#5C3A1A"/>
+    </linearGradient>
+    <linearGradient id="woodHL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E3B678"/>
+      <stop offset="1" stop-color="#A9743C"/>
+    </linearGradient>
+    <g id="horse">
+      <!-- carved knight profile -->
+      <path d="M50 88 L20 88 Q16 88 17 83 L22 72 Q10 66 10 50 Q10 26 32 16 L36 6 Q37 3 40 6 L44 12 Q48 10 54 11 L60 4 Q62 1 64 5 L66 14 Q84 22 86 44 L88 60 Q88 64 84 63 L70 58 Q66 68 62 72 L58 83 Q57 88 52 88 Z"
+        fill="url(#woodH)" stroke="#3A2410" stroke-width="3" stroke-linejoin="round"/>
+      <!-- mane carve lines -->
+      <path d="M60 18 Q70 26 73 40 M56 24 Q64 32 66 44" stroke="#4A2A12" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/>
+      <!-- eye + nostril -->
+      <circle cx="34" cy="32" r="3.4" fill="#2B1708"/>
+      <path d="M20 56 q4 3 8 2" stroke="#2B1708" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <!-- grain highlight -->
+      <path d="M28 78 Q40 70 46 54" stroke="url(#woodHL)" stroke-width="2" fill="none" opacity=".55" stroke-linecap="round"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="frames">
+
+<!-- ================= 1 · MAIN MENU ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad">
+      <div class="title-block">
+        <div class="title-hindi">Ghode Ki Chaal</div>
+        <div class="title-sub">The Horse Tour</div>
+      </div>
+      <svg class="hero-horse" viewBox="0 0 100 96"><use href="#horse"/></svg>
+      <div style="text-align:center;margin:2px 0 8px">
+        <span class="chip">Best · 5×5 &nbsp;<b>00:47.2</b></span>
+      </div>
+      <div class="menu-stack">
+        <div>
+          <div class="field-label">Board</div>
+          <div class="seg">
+            <div class="opt on">5×5</div><div class="opt">6×6</div><div class="opt">8×8</div>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Difficulty</div>
+          <div class="seg">
+            <div class="opt">Apprentice</div><div class="opt on">Knight</div><div class="opt">Master</div>
+          </div>
+          <div style="font-size:11.5px;color:var(--parchment-dim);margin-top:7px;line-height:1.45">
+            Legal moves are highlighted for you.
+          </div>
+        </div>
+        <div class="wood-btn primary" style="margin-top:2px">New Game</div>
+        <div class="wood-btn">How to Play</div>
+        <div style="display:flex;justify-content:center;gap:10px;margin-top:2px">
+          <span class="chip">🔊 Sound <b>on</b></span>
+          <span class="chip">🌫 Ambience <b>off</b></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>01</b> · Main Menu</div>
+</div>
+
+<!-- ================= 2 · GAMEPLAY (PLAYING) ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad" style="gap:12px">
+      <div class="hud">
+        <div class="cell"><div class="k">Board</div><div class="v">5×5</div></div>
+        <div class="cell"><div class="k">Filled</div><div class="v">9/25</div></div>
+        <div class="cell"><div class="k">Moves</div><div class="v">8</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v hot">01:12</div></div>
+        <div class="cell"><div class="k">Hints</div><div class="v">1</div></div>
+      </div>
+
+      <div class="board-wrap" style="margin-top:6px">
+        <div class="board n5" id="b1"></div>
+        <svg class="path-svg" viewBox="0 0 280 280">
+          <circle cx="28" cy="28" r="4"/>
+          <polyline points="28,28 84,140 28,252 140,196 84,84 196,28 252,140 196,252 84,196"/>
+        </svg>
+      </div>
+
+      <div style="text-align:center;font-size:12px;color:var(--parchment-dim)">
+        Tap a highlighted square to hop
+      </div>
+
+      <div class="actions" style="margin-top:auto">
+        <div class="wood-btn">Undo</div>
+        <div class="wood-btn">Hint</div>
+        <div class="wood-btn">Restart</div>
+        <div class="wood-btn">⏸ Pause</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>02</b> · Gameplay — Knight difficulty</div>
+</div>
+
+<!-- ================= 3 · GAMEPLAY (LOST — board stays visible) ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad" style="gap:12px">
+      <div class="hud">
+        <div class="cell"><div class="k">Board</div><div class="v">5×5</div></div>
+        <div class="cell"><div class="k">Filled</div><div class="v">21/25</div></div>
+        <div class="cell"><div class="k">Moves</div><div class="v">20</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">03:58</div></div>
+        <div class="cell"><div class="k">Hints</div><div class="v">2</div></div>
+      </div>
+
+      <div class="board-wrap" style="margin-top:6px">
+        <div class="board n5" id="b2"></div>
+        <svg class="path-svg" viewBox="0 0 280 280">
+          <circle cx="196" cy="140" r="4"/>
+          <polyline points="196,140 140,252 28,196 84,84 196,28 252,140 140,84 84,196 28,84 140,28 84,140 28,252 140,196 196,84 252,196 140,140 252,84 196,196 84,252 28,140 84,28"/>
+        </svg>
+      </div>
+
+      <div class="stuck-banner">
+        <div class="t">Stuck! No legal moves remain.</div>
+        <div class="s">4 squares left unvisited. Study the board, then undo a few hops or restart the tour.</div>
+      </div>
+
+      <div class="actions" style="grid-template-columns:1fr 1fr;margin-top:auto">
+        <div class="wood-btn primary">Undo</div>
+        <div class="wood-btn danger">Restart</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>03</b> · Loss state — non-blocking banner</div>
+</div>
+
+<!-- ================= 4 · PAUSE / SETTINGS ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad" style="gap:12px;filter:none">
+      <div class="hud" style="opacity:.55">
+        <div class="cell"><div class="k">Board</div><div class="v">5×5</div></div>
+        <div class="cell"><div class="k">Filled</div><div class="v">9/25</div></div>
+        <div class="cell"><div class="k">Moves</div><div class="v">8</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">01:12</div></div>
+        <div class="cell"><div class="k">Hints</div><div class="v">1</div></div>
+      </div>
+      <div class="board-wrap" style="margin-top:6px;opacity:.4">
+        <div class="board n5" id="b3"></div>
+      </div>
+    </div>
+    <div class="dim"></div>
+    <div class="sheet">
+      <h3>Paused</h3>
+      <div class="toggle">
+        <div><div class="t-name">Sound</div><div class="t-sub">Wooden hop &amp; click effects</div></div>
+        <div class="knob on"></div>
+      </div>
+      <div class="toggle">
+        <div><div class="t-name">Ambience</div><div class="t-sub">Soft workshop background</div></div>
+        <div class="knob"></div>
+      </div>
+      <div class="toggle">
+        <div><div class="t-name">Hints</div><div class="t-sub">Allow the Hint button</div></div>
+        <div class="knob on"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="field-label" style="margin-top:6px">Difficulty</div>
+      <div class="seg">
+        <div class="opt">Apprentice</div><div class="opt on">Knight</div><div class="opt">Master</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+        <div class="wood-btn primary">Resume</div>
+        <div class="wood-btn">Quit to Menu</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>04</b> · Pause &amp; Settings</div>
+</div>
+
+<!-- ================= 5 · RESULT (WIN) ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad" style="align-items:center;text-align:center">
+      <div style="margin-top:26px" class="screen-title">Tour Complete!</div>
+      <div style="font-size:12.5px;color:var(--parchment-dim);margin-top:4px">Every square visited — a full Knight's Tour.</div>
+      <div class="win-burst">
+        <svg viewBox="0 0 130 130">
+          <g opacity=".85">
+            <path d="M65 6 v16 M65 108 v16 M6 65 h16 M108 65 h16 M22 22 l11 11 M97 97 l11 11 M108 22 l-11 11 M33 97 l-11 11"
+              stroke="#FFB84D" stroke-width="4" stroke-linecap="round"/>
+          </g>
+          <circle cx="65" cy="65" r="34" fill="none" stroke="#FFB84D" stroke-width="3" stroke-dasharray="6 7"/>
+        </svg>
+        <svg viewBox="0 0 100 96" style="position:absolute;inset:22%"><use href="#horse"/></svg>
+      </div>
+      <div class="newbest">★ New Best Time</div>
+      <div class="result-stats" style="width:100%">
+        <div class="stat-card"><div class="k">Time</div><div class="v gold">02:31.6</div></div>
+        <div class="stat-card"><div class="k">Previous Best</div><div class="v">02:47.2</div></div>
+        <div class="stat-card"><div class="k">Moves</div><div class="v">24</div></div>
+        <div class="stat-card"><div class="k">Hints Used</div><div class="v">0</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:auto;padding-top:14px">
+        <div class="wood-btn primary">Play Again</div>
+        <div class="wood-btn">Menu</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>05</b> · Win Result — new best</div>
+</div>
+
+<!-- ================= 6 · INSTRUCTIONS ================= -->
+<div class="frame-slot">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>▮▮▮ ⌁ 84%</span></div>
+    <div class="body-pad">
+      <div class="back-row">
+        <div class="back-btn">←</div>
+        <div class="screen-title">How to Play</div>
+      </div>
+
+      <div class="lmove" id="lmove"></div>
+      <div style="text-align:center;font-size:11.5px;color:var(--parchment-dim);margin-bottom:6px">
+        The horse always moves in an <b style="color:var(--amber)">L</b> — two squares one way, one square across.
+      </div>
+
+      <div class="rule">
+        <div class="ic">♞</div>
+        <div class="tx"><b>Visit every square once</b>
+        <span>Start anywhere. Hop square to square using only legal knight moves. Fill the whole board to win the tour.</span></div>
+      </div>
+      <div class="rule">
+        <div class="ic">🐎</div>
+        <div class="tx"><b>Horses stay behind</b>
+        <span>Every visited square keeps its own carved horse, and a dashed trail marks your route.</span></div>
+      </div>
+      <div class="rule">
+        <div class="ic">⟲</div>
+        <div class="tx"><b>Stuck? Undo or restart</b>
+        <span>If no legal move remains, the board stays visible so you can study it — undo a few hops or start fresh.</span></div>
+      </div>
+      <div class="rule">
+        <div class="ic">✦</div>
+        <div class="tx"><b>Difficulty changes the help</b>
+        <span>Apprentice shows the best move. Knight highlights legal moves. Master shows nothing at all.</span></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="frame-label"><b>06</b> · Instructions</div>
+</div>
+
+</div><!-- /frames -->
+
+<script>
+/* Build the 5×5 boards.
+   Coordinates: index r,c. Path in screen 2 corresponds to visited list below. */
+function buildBoard(el, visited, current, legal){
+  const n = 5;
+  for(let r=0;r<n;r++){
+    for(let c=0;c<n;c++){
+      const d = document.createElement('div');
+      d.className = 'sq ' + (((r+c)%2===0)?'l':'d');
+      const key = r+','+c;
+      if(visited.has(key) && key!==current){
+        d.classList.add('visited');
+        d.innerHTML = '<svg class="mini-horse" viewBox="0 0 100 96"><use href="#horse"/></svg>';
+      }
+      if(key===current){
+        d.classList.add('current');
+        d.innerHTML = '<svg class="big-horse" viewBox="0 0 100 96"><use href="#horse"/></svg>';
+      }
+      if(legal && legal.has(key)) d.classList.add('legal');
+      el.appendChild(d);
+    }
+  }
+}
+
+/* Screen 2 — verified legal knight sequence (9 squares), current (3,1).
+   (0,0)→(2,1)→(4,0)→(3,2)→(1,1)→(0,3)→(2,4)→(4,3)→(3,1)
+   Legal unvisited moves from (3,1): (2,3),(1,2),(1,0). */
+const v1 = new Set(['0,0','2,1','4,0','3,2','1,1','0,3','2,4','4,3','3,1']);
+buildBoard(document.getElementById('b1'), v1, '3,1', new Set(['2,3','1,2','1,0']));
+
+/* Screen 3 — verified loss: 21-square knight path ending in a true dead end
+   at (0,1). 4 squares remain unvisited. */
+const v2 = new Set(['2,3','4,2','3,0','1,1','0,3','2,4','1,2','3,1','1,0','0,2','2,1','4,0','3,2','1,3','3,4','2,2','1,4','3,3','4,1','2,0','0,1']);
+buildBoard(document.getElementById('b2'), v2, '0,1', null);
+
+/* Screen 4 — dimmed background board */
+buildBoard(document.getElementById('b3'), v1, '4,3', null);
+
+/* Instructions L-move mini board (3×3) */
+(function(){
+  const el = document.getElementById('lmove');
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    const d=document.createElement('div');
+    d.className='sq '+(((r+c)%2===0)?'l':'d');
+    if(r===2&&c===0){
+      d.innerHTML='<svg class="big-horse" viewBox="0 0 100 96" style="inset:10%"><use href="#horse"/></svg>';
+    }
+    if(r===0&&c===1){ d.classList.add('legal'); }
+    el.appendChild(d);
+  }
+  /* L arrow overlay */
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 132 132');
+  svg.style.cssText='position:absolute;inset:0;pointer-events:none';
+  svg.innerHTML='<path d="M22 110 V44 H56" fill="none" stroke="#FFB84D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 8"/><path d="M50 34 L64 44 L50 54 Z" fill="#FFB84D"/>';
+  el.appendChild(svg);
+})();
+</script>
+</body>
+</html>
