@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghode Ki Chaal · Port Tracker</title>
+<style>
+:root{
+  --wood-darkest:#2c1a0c; --wood-dark:#4a2d12; --wood:#6e451d; --wood-mid:#8a5a2b;
+  --wood-light:#b9803f; --wood-lighter:#d8a86b;
+  --parch:#f5e7c8; --parch-dim:#e7d2a8; --ink:#3a2410; --ink-soft:#6b4a26;
+  --gold:#e8b14a; --gold-deep:#c8902f; --legal:#3f8d57; --legal-bright:#57c97c;
+  --lose:#bd5a32; --win:#5fa85f;
+  --disp:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+  --ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--ui);color:var(--ink);
+  background:radial-gradient(120% 90% at 50% 0%,rgba(120,78,36,.55),transparent 60%),
+             radial-gradient(80% 70% at 50% 50%,#5a3717,#2c1a0c 80%);
+  background-attachment:fixed;min-height:100vh}
+.wrap{max-width:1060px;margin:0 auto;padding:14px 14px 60px}
+
+/* ---------- header / workbench ---------- */
+header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:10px 4px 16px}
+.title h1{font-family:var(--disp);color:var(--parch);margin:0;font-size:clamp(20px,4vw,30px);letter-spacing:.5px}
+.title p{margin:2px 0 0;color:var(--wood-lighter);font-size:13px}
+.stage{position:relative;height:84px;flex:1;min-width:250px;max-width:420px}
+.strip{position:absolute;bottom:6px;left:0;right:0;height:34px;display:flex;border:2px solid #3f250f;border-radius:6px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.strip i{flex:1;background:var(--board-a,#ecca94)}
+.strip i:nth-child(even){--board-a:#a06a35}
+.strip i.fill{background:var(--gold)!important;transition:background .5s}
+.horse{position:absolute;bottom:34px;width:46px;height:49px;left:0;will-change:transform;filter:drop-shadow(0 6px 4px rgba(0,0,0,.45))}
+.hshadow{position:absolute;bottom:32px;width:34px;height:8px;background:rgba(0,0,0,.4);border-radius:50%;left:6px}
+.statusbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;padding:5px 11px;border-radius:20px;border:1px solid rgba(245,231,200,.35);color:var(--parch);background:rgba(0,0,0,.25);cursor:default}
+.pill.ok{border-color:var(--legal-bright);color:#bdf0cf}
+.pill.err{border-color:var(--lose);color:#ffb59a}
+.pill.busy{border-color:var(--gold);color:var(--gold)}
+button.btn{font-family:inherit;cursor:pointer;border:1px solid rgba(63,37,15,.6);border-radius:9px;
+  padding:7px 14px;color:var(--parch);background:linear-gradient(180deg,var(--wood-mid),var(--wood));
+  box-shadow:inset 0 1px 0 rgba(255,240,210,.25),0 3px 8px rgba(20,10,2,.3);font-size:13px}
+button.btn:active{transform:translateY(1px)}
+button.btn.gold{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:var(--wood-darkest);font-weight:600}
+
+/* ---------- tabs ---------- */
+nav{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin}
+nav button{flex:0 0 auto;font-family:var(--disp);font-size:14px;padding:9px 15px;border-radius:10px 10px 0 0;
+  border:1px solid rgba(63,37,15,.55);border-bottom:none;color:var(--parch-dim);cursor:pointer;
+  background:linear-gradient(180deg,rgba(110,69,29,.85),rgba(74,45,18,.85));transition:all .2s}
+nav button .n{font-size:10px;font-family:var(--ui);opacity:.85;display:block;margin-top:1px}
+nav button.on{background:linear-gradient(180deg,var(--parch),var(--parch-dim));color:var(--ink);transform:translateY(2px)}
+main{background:linear-gradient(180deg,rgba(255,245,222,.97),rgba(243,224,188,.97));
+  border:1px solid rgba(74,45,18,.5);border-radius:0 14px 14px 14px;
+  box-shadow:0 12px 34px rgba(20,10,2,.5),inset 0 1px 0 rgba(255,255,255,.5);
+  padding:clamp(14px,3vw,28px);min-height:420px}
+.panel{animation:rise .28s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h2{font-family:var(--disp);color:var(--wood-dark);margin:.2em 0 .5em;font-size:22px;border-bottom:2px solid rgba(138,90,43,.35);padding-bottom:6px}
+h3{font-family:var(--disp);color:var(--wood);margin:1.1em 0 .4em;font-size:17px}
+p,li{font-size:14px;line-height:1.55}
+.note{background:rgba(232,177,74,.16);border-left:4px solid var(--gold-deep);padding:8px 12px;border-radius:0 8px 8px 0;font-size:13px;margin:10px 0}
+.warn{background:rgba(189,90,50,.14);border-left:4px solid var(--lose);padding:8px 12px;border-radius:0 8px 8px 0;font-size:13px;margin:10px 0}
+
+/* ---------- checklist items ---------- */
+.item{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;transition:background .2s}
+.item:hover{background:rgba(138,90,43,.1)}
+.sq{flex:0 0 22px;width:22px;height:22px;margin-top:1px;border:2px solid var(--wood);border-radius:5px;background:var(--parch);
+  cursor:pointer;position:relative;padding:0;transition:background .18s,border-color .18s}
+.sq::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--parch);font-size:14px;font-weight:700;transform:scale(0);transition:transform .22s cubic-bezier(.34,1.6,.5,1)}
+.item.done .sq{background:var(--wood-dark);border-color:var(--wood-darkest)}
+.item.done .sq::after{transform:scale(1)}
+.item .lbl{flex:1;font-size:14px;line-height:1.4}
+.item.done .lbl{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:rgba(107,74,38,.5)}
+.item .meta{display:block;font-size:11px;color:var(--gold-deep);font-family:var(--mono);margin-top:1px}
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;background:var(--wood-dark);color:var(--parch);
+  border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:1px}
+.tag.b{background:var(--gold-deep);color:var(--wood-darkest)}
+.grp{margin:0 0 18px;border:1px solid rgba(138,90,43,.3);border-radius:10px;padding:8px 10px;background:rgba(255,251,240,.55)}
+.grp>.gh{display:flex;justify-content:space-between;align-items:center;font-family:var(--disp);color:var(--wood-dark);font-weight:700;padding:4px 6px;font-size:15px}
+.mini{font-size:11px;color:var(--ink-soft);font-family:var(--ui);font-weight:400}
+.bar{height:7px;border-radius:4px;background:rgba(138,90,43,.25);overflow:hidden;margin:4px 6px 8px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-deep));width:0;transition:width .6s ease;border-radius:4px}
+.bar.full i{background:linear-gradient(90deg,var(--legal-bright),var(--legal))}
+
+/* ---------- overview ---------- */
+.rings{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin:14px 0}
+.ring{background:rgba(255,251,240,.6);border:1px solid rgba(138,90,43,.3);border-radius:12px;padding:12px;text-align:center}
+.ring svg{width:74px;height:74px}
+.ring .pc{font-family:var(--disp);font-size:16px;fill:var(--wood-dark);font-weight:700}
+.ring .nm{font-size:12.5px;color:var(--ink-soft);margin-top:4px;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 14px}
+th{background:rgba(138,90,43,.18);font-family:var(--disp);text-align:left}
+th,td{border:1px solid rgba(138,90,43,.35);padding:6px 9px;vertical-align:top}
+.sw{display:inline-block;width:15px;height:15px;border-radius:4px;border:1px solid rgba(0,0,0,.3);vertical-align:-3px;margin-right:6px}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;color:#fff}
+.chip.H{background:var(--lose)}.chip.M{background:var(--gold-deep)}.chip.L{background:var(--legal)}
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.pal div{background:rgba(255,251,240,.6);border:1px solid rgba(138,90,43,.3);border-radius:8px;padding:7px 9px;font-size:12px;font-family:var(--mono)}
+
+/* ---------- modal ---------- */
+dialog{border:2px solid var(--wood-dark);border-radius:14px;background:var(--parch);color:var(--ink);
+  max-width:520px;width:92vw;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(20,10,2,.65)}
+dialog h2{margin-top:0}
+dialog label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 3px;color:var(--wood-dark)}
+dialog input{width:100%;padding:8px 10px;border:1px solid var(--wood-mid);border-radius:8px;background:#fffbf0;font-family:var(--mono);font-size:13px}
+dialog ol{padding-left:18px;font-size:12.5px}
+.row2{display:flex;gap:10px}.row2>div{flex:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:640px){.stage{max-width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="title">
+    <h1>Ghode Ki Chaal · Port Tracker</h1>
+    <p id="daychip">Unity 6 Android port · 2-person studio</p>
+  </div>
+  <div class="stage" aria-hidden="true">
+    <div class="hshadow" id="hsh"></div>
+    <svg class="horse" id="horse" viewBox="0 0 120 128" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e7b578"/><stop offset=".45" stop-color="#bd853f"/><stop offset="1" stop-color="#6e451d"/></linearGradient>
+        <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a06e34"/><stop offset="1" stop-color="#5a3617"/></linearGradient>
+        <linearGradient id="gd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4d22"/><stop offset="1" stop-color="#46290f"/></linearGradient>
+        <radialGradient id="gs" cx=".32" cy=".26" r=".7"><stop offset="0" stop-color="#fff3da" stop-opacity=".55"/><stop offset=".4" stop-color="#fff3da" stop-opacity=".12"/><stop offset="1" stop-color="#fff3da" stop-opacity="0"/></radialGradient>
+      </defs>
+      <g stroke="#3f250f" stroke-width="1.5" stroke-linejoin="round"><rect x="20" y="113" width="80" height="11" rx="5" fill="url(#gb)"/><rect x="29" y="103" width="62" height="12" rx="4" fill="url(#gb)"/></g>
+      <path d="M84 104 C88 86 84 67 72 57 C67 53 62 49 62 41 C62 35 63 29 66 23 L72 12 L64 23 L56 12 L50 25 C42 23 32 27 24 37 C18 44 12 49 9 57 C7 61 9 65 14 65 L26 63 C30 63 31 67 27 70 L38 70 C46 71 52 75 56 83 C60 91 62 97 66 104 Z" fill="url(#gw)" stroke="#3f250f" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M64 26 C61 40 64 58 70 74 C74 84 78 92 80 100" fill="none" stroke="url(#gd)" stroke-width="4" stroke-linecap="round" opacity=".75"/>
+      <path d="M30 40 C36 44 42 50 46 60" fill="none" stroke="#5a3617" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+      <circle cx="40" cy="42" r="3.1" fill="#2c1808"/><circle cx="39" cy="41" r="1" fill="#e7b578" opacity=".7"/><circle cx="16" cy="58" r="1.7" fill="#2c1808" opacity=".7"/>
+      <path d="M84 104 C88 86 84 67 72 57 C67 53 62 49 62 41 C62 35 63 29 66 23 L72 12 L64 23 L56 12 L50 25 C42 23 32 27 24 37 C18 44 12 49 9 57 C7 61 9 65 14 65 L26 63 C30 63 31 67 27 70 L38 70 C46 71 52 75 56 83 C60 91 62 97 66 104 Z" fill="url(#gs)"/>
+    </svg>
+    <div class="strip" id="strip"></div>
+  </div>
+  <div class="statusbar">
+    <span class="pill" id="sync">Not connected</span>
+    <button class="btn gold" id="cfgbtn">⚙ Connect GitHub</button>
+    <button class="btn" id="syncnow" title="Pull + push now">Sync now</button>
+  </div>
+</header>
+
+<nav id="tabs"></nav>
+<main id="main"></main>
+</div>
+
+<dialog id="cfg">
+  <h2>Connect to GitHub</h2>
+  <p style="font-size:13px">Every checkbox saves to <code>progress.json</code> in your repo, so your colleague sees it within ~20 s. Each of you does this once, on your own device.</p>
+  <ol>
+    <li>Create a private repo (or use the game repo). Commit this HTML file and an empty <code>progress.json</code> containing <code>{"schemaVersion":1,"items":{}}</code>.</li>
+    <li>GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> → Generate. Repository access: <b>only that repo</b>. Permissions: <b>Contents → Read and write</b>. Nothing else.</li>
+    <li>Paste everything below. The token stays in this browser only (localStorage) — never share it or commit it.</li>
+  </ol>
+  <div class="row2"><div><label>Owner</label><input id="f_owner" placeholder="your-github-username"></div>
+  <div><label>Repo</label><input id="f_repo" placeholder="ghodekichaal-tracker"></div></div>
+  <div class="row2"><div><label>Branch</label><input id="f_branch" value="main"></div>
+  <div><label>File path</label><input id="f_path" value="progress.json"></div></div>
+  <label>Fine-grained token</label><input id="f_token" type="password" placeholder="github_pat_…">
+  <label>Your initials (shown next to items you tick)</label><input id="f_name" maxlength="6" placeholder="e.g. RS">
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+    <button class="btn" id="cfgcancel">Cancel</button>
+    <button class="btn gold" id="cfgsave">Save & connect</button>
+  </div>
+</dialog>
+
+<script>
+/* ================= DATA ================= */
+const AREAS={dev:'Dev',art:'Art',design:'Design',audio:'Audio',ui:'UI/UX',qa:'QA',rel:'Release',plan:'Plan',asset:'Assets',risk:'Risks'};
+function items(prefix,arr){return arr.map((t,i)=>({id:prefix+'.'+String(i+1).padStart(2,'0'),t}));}
+const D={
+ sched:[
+  ['1 · Jul 3','C1','Unity 6 project, folders, git, Android settings, keystore, first device build','Play Console app entry; closed track; recruit 16–20 testers; merchant profile; privacy draft'],
+  ['2 · Jul 4','C2 C7 M2','Port KnightLogic + unit tests','Bake all SFX (offline render); art brief locked; first Firefly/Meshy gens'],
+  ['3 · Jul 5','C2 M2 ★M1','Port GameStateMachine, tests green; upload graybox AAB — 14-day clock starts','Board + horse art production'],
+  ['4 · Jul 6','C3 M2','Board render, tap input, highlight tiers','UI kit + theme variant plan'],
+  ['5 · Jul 7','C4 C5 ★M2','Piece spawn/hop/path/badges + reduced motion','Menu + HUD prefabs'],
+  ['6 · Jul 8','C5 M3','Pause, instructions, result, stuck banner, router','Music sourcing + edit; ambience loop'],
+  ['7 · Jul 9','C6 C8 ★M3','Save system + pause-safe timer','Store draft; vertical-slice AAB uploaded'],
+  ['8 · Jul 10','M1 M8 C9','Drag input + haptics','QA pass 1 (device + emulators); art fixes'],
+  ['9 · Jul 11','M7 M6 M4','7×7 size + settings UI; theme skeleton','Play Games console setup; theme assets'],
+  ['10 · Jul 12','M6 M4','Leaderboards: sign-in, submit, view','Theme assets finish; screenshot plan'],
+  ['11 · Jul 13','M4 C8','Billing: purchase, restore, entitlement','Screenshots + feature graphic'],
+  ['12 · Jul 14','M5 M9 ★M4','AdMob + UMP + caps + remove-ads wiring','Analytics review; music integrate + duck'],
+  ['13 · Jul 15','M9 C9','Firebase Analytics + Crashlytics','Full regression; IAP/ads/leaderboard passes'],
+  ['14 · Jul 16','C9 C8','Bug fixes','Data-safety, content rating, privacy final'],
+  ['15 · Jul 17','C8 ★M5','RC AAB, version bump, upload','Final smoke + listing review']],
+ ms:items('ms',['M1 · Day 3 — Logic ported: tests green, graybox in closed testing, 12+ testers in','M2 · Day 5 — Core loop on device at 60 fps','M3 · Day 7 — Vertical slice: all screens, SFX, save; AAB uploaded','M4 · Day 12 — Feature-complete; hard freeze','M5 · Day 15 — Release candidate: zero S1/S2; listing submitted','Launch · ≈Day 22–28 — open release live']),
+ pipe:{
+  dev:items('dev',['C1 Unity 6 LTS project (2D URP) + Input System/TMP/Test Framework','C1 Git repo, Unity .gitignore, LFS for art','C1 Android: min API 29, ARM64, IL2CPP, portrait; keystore made + backed up twice','C1 Empty build runs on ROG Phone 5','C2 KnightLogic.cs ported; all logic tests green (offsets, Warnsdorff + tie-breaks, solvability incl. 7×7)','C2 GameStateMachine.cs ported; reducer tests green (undo-to-placing, undo-from-loss, restart timer, instructions→paused)','C3 Board any size; exact cells; tap dispatch; highlight tiers','C4 Spawn 320 ms; hop 380 ms apex .55×cell + shadow; path/badge layering; reduced-motion snap','C5 All screens + router; stuck banner; walk every flow edge','C6 SaveService JSON v1; pause-safe timer across backgrounding','C7 AudioService + mixer; 20 ms mute ramp; hop round-robin','M1 Drag input, 12 dp threshold, snap-back, no tap regressions','M8 Haptics per map, toggleable','M7 7×7 option + tests','M6 Play Games optional sign-in; per-size leaderboards','M4 Billing royal_stable: buy, restore, entitle; instant themes','M5 AdMob + UMP consent; caps enforced; zero init when entitled','M9 Analytics events per schema; Crashlytics verified','C8 AAB reproducible; versionCode auto; R8 rules']),
+  art:items('art',['M2 Style brief + master prompts locked; palette in tools','M2 Horse via Meshy/Firefly, left-facing, colour-matched','M2 Cells light/dark, frame 9-slice, shadow, badges','M2 UI kit: buttons ×3, toggle, segmented, panel, 6 icons','M4 Ebony + Marble sets recoloured; readability checked','All Named, atlased, imports verified, provenance saved','C8 Adaptive icon, feature graphic, 6 screenshots']),
+  design:items('design',['GDD parity walk on device vs web build','Difficulty captions + instructions copy verbatim; diagram rebuilt','Ad placement self-test 20 rounds for annoyance','Theme readability sign-off (legal/win/lose per theme)','Rule changes → GDD bump + decision log']),
+  audio:items('audio',['Offline-render tool in web project; 6 hop variants + 6 SFX WAV','Normalised −1 dBFS, trimmed, OGG q0.6, imported','Music loop sourced, seam ok, −16 LUFS, ducking verified','Ambience 60 s seamless loop, off by default','A/B vs web on speaker + earphones; loudness log']),
+  ui:items('ui',['Prefab per screen 16:9–20:9; safe-area root','48 dp target audit on every control','TalkBack pass: squares announce row/col/legal','Font ×1.3 pass; no clipping','Reduced-motion, consent flow, restore-purchases path'])},
+ qa:{
+  L:items('qa.l',['L-01 Legal-move sets match web (5/6/7/8 samples)','L-02 Warnsdorff identical incl. tie-break cases','L-03 Win fires incl. via undo-then-alternate route','L-04 Lose: board stays, banner shows, timer stops','L-05 Undo from loss resumes; chain to placing; undosUsed++','L-06 Counts derived from history after undo storms','L-07 5×5 parity starts behave (spot via WarnsdorffPath)']),
+  A:items('qa.a',['A-01 Restart mid-game resets AND restarts timer (historic bug)','A-02 Pause/instructions/menu time excluded','A-03 Background 10 min → exact resume; kill → settings+records survive','A-04 Call mid-hop; rotate locked; split-screen graceful','A-05 New best per size; 12-entry rollover; dates','A-06 Save v1 survives update-in-place','A-07 Reduced motion, TalkBack, font ×1.3']),
+  M:items('qa.m',['M-01 IAP buy / cancel / net-drop / restore — entitlement right','M-02 Themes instant, persistent, readable','M-03 Ads: caps honoured; never while stuck; NEVER when entitled','M-04 UMP consent fresh install; decline still playable','M-05 Leaderboards optional; submit on win; offline syncs','M-06 Analytics debugview; Crashlytics test crash symbolicated']),
+  P:items('qa.p',['P-01 60 fps 8×8 full tour incl. drag; low-RAM ≥30','P-02 Zero GC allocs/frame in play','P-03 Cold start <3 s; <150 MB PSS; AAB <40 MB'])},
+ rel:{
+  'One-time setup (Day 1)':items('rel.setup',['Confirm account type (personal date vs org) — decides launch path','App entry: name, en-US, Game→Puzzle, Free','Keystore + passwords in manager, backed up twice','Play App Signing enrolled','Merchant/payments + tax set up (IAP)','Closed track + 16–20 tester list; opt-in link shared']),
+  'Every build':items('rel.build',['versionName/versionCode bumped; notes written','AAB ARM64 IL2CPP R8 from tagged commit','Install from track (not sideload) + smoke','Pre-launch report triaged as bugs']),
+  'RC gate (Day 15)':items('rel.rc',['QA regression signed; zero S1/S2','Listing complete: title ≤30, short ≤80, full, icon 512, feature 1024×500, 6–8 shots','Content rating submitted (expect Everyone)','Privacy policy live: Analytics, Crashlytics, AdMob, Billing','Data-safety: Firebase + AdMob + purchase history declared','Ads declaration yes; target audience 13+','App access: no credentials needed']),
+  'Path to production':items('rel.prod',['Tester count checked DAILY ≥12 (continuous clock)','Testers nudged to stay engaged','Day ~17 apply for production; questionnaire answered with specifics','On approval promote RC to Production']),
+  'Launch & week 1':items('rel.launch',['Staged rollout 20→50→100% watching vitals','Crash <1.09%, ANR <0.47%','Tag commit; archive AAB + mapping','Analytics triage feeds v1.1'])},
+ asset:{
+  'Board & pieces':items('asset.bp',['Cells light/dark ×3 themes (512²)','Frame 9-slice ×3 (1024²)','Horse sprite ×3 (1024×1067, faces left)','Ground shadow (shared)','Move badge ×3 (256²)','Highlight rings ×2 (semantic colours)','Path dash texture']),
+  'UI kit':items('asset.ui',['Buttons std+gold ×3 states (9-slice)','Toggle, segmented, panel 9-slice','Icons ×10 (hint/undo/restart/mute×2/menu/pause/back/trophy/cart)','Logo lockup bilingual','Instructions move diagram','Theme-shop preview cards ×3']),
+  'Store':items('asset.store',['Adaptive icon fg/bg + 512 store icon','Feature graphic 1024×500','Screenshots 6–8 per shot-list']),
+  'Audio':items('asset.au',['sfx_hop_01..06','sfx_place / invalid / click / win / lose','amb_wood_loop 60 s','mus_theme_loop −16 LUFS']),
+  'Copy & legal':items('asset.copy',['Store listing copy final','Privacy policy page live','IAP “Royal Stable” copy','Tester briefing message'])},
+ risk:[
+  ['R1','Zero-slack plan slips','H','H','Same-evening module demotion M5→M6→M9½→M2½; date never moves','A'],
+  ['R2','Testers drop below 12, clock resets','M','H','16–20 recruits; daily count; brief not to opt out','B'],
+  ['R3','Payments profile delays block IAP','M','M','Set up day 1; license testers early','B'],
+  ['R4','AI art inconsistency burns days','M','M','Brief locked day 2; 2-iteration cap then recolour','B'],
+  ['R5','Flagship-only device hides low-end issues','M','M','Emulator matrix; pre-launch report every upload','A'],
+  ['R6','Ads/consent policy mistakes → rejection','M','H','Test IDs till RC; EEA testing; caps per UX','A'],
+  ['R7','Production application rejected','L','H','Log real feedback + fixes; specific answers','B'],
+  ['R8','Parity drift from web feel/rules','M','M','Automated suite + side-by-side at M2/M4/RC','Both'],
+  ['R9','Generated-asset licence unsuitable','L','H','Verify terms pre-RC; provenance folder','B'],
+  ['R10','Two-person single point of failure','M','M','Everything on the board; either can build','Both'],
+  ['R11','Scope creep','M','M','New scope = costed module + equal hours removed','Both'],
+  ['R12','Music/loudness feels off on speakers','L','L','LUFS targets; A/B in QA','B']],
+ pal:[['wood-darkest','#2c1a0c'],['wood-dark','#4a2d12'],['wood','#6e451d'],['wood-mid','#8a5a2b'],['wood-light','#b9803f'],['wood-lighter','#d8a86b'],['parchment','#f5e7c8'],['ink','#3a2410'],['board-light','#ecca94'],['board-dark','#a06a35'],['gold','#e8b14a'],['gold-deep','#c8902f'],['legal','#3f8d57'],['legal-bright','#57c97c'],['win','#5fa85f'],['lose','#bd5a32']],
+ sfx:[['Hop','300×j tri .16s g.5 n.45 bp2100 + sine 150×j .12s — 6 baked variants','sfx_hop_01..06'],['Place','210 Hz .24s g.5 n.3 bp1200 drop.6','sfx_place'],['Invalid','sine120 .14s + square96 @+20ms','sfx_invalid'],['Click','620 Hz .05s n.5 bp3200','sfx_click'],['Win','392·523·659·784·1046 @110ms + 1318 shimmer','sfx_win'],['Lose','233·175·131 sine @180ms','sfx_lose'],['Ambience','LP260 noise g.015 + creaks ~4.2s — 60s loop','amb_wood_loop']],
+ map:[['game/knightLogic.js','Logic/KnightLogic.cs','identical fns + tie-breaks'],['state/gameReducer.js','State/GameStateMachine.cs','same actions & phases; pure Reduce()'],['state/records.js','State/Records.cs','MAX_HISTORY 12'],['hooks/useTimer.js','Services/GameTimer.cs','pause-safe; freeze on OnApplicationPause'],['audio/AudioEngine.js','Services/AudioService.cs','baked clips; 20 ms mute ramp'],['useLocalStorage.js','Services/SaveService.cs','JSON in persistentDataPath'],['components/*.jsx','Presentation/* + UGUI prefabs','one controller per screen']]
+};
+const SCHED_ITEMS=[];D.sched.forEach((d,i)=>{const n=String(i+1).padStart(2,'0');
+ SCHED_ITEMS.push({id:'day'+n+'.a',t:d[2],day:d[0],tags:d[1],who:'A'});
+ SCHED_ITEMS.push({id:'day'+n+'.b',t:d[3],day:d[0],tags:d[1],who:'B'});});
+const RISK_ITEMS=D.risk.map(r=>({id:'risk.'+r[0].toLowerCase(),t:r[0]+' mitigated / closed'}));
+
+/* ================= STATE & SYNC ================= */
+const LS='gkc_tracker_';
+let cfg=JSON.parse(localStorage.getItem(LS+'cfg')||'null');
+let S=JSON.parse(localStorage.getItem(LS+'state')||'{"schemaVersion":1,"items":{}}');
+let sha=null,dirty=false,saveTimer=null,polling=null;
+const $=s=>document.querySelector(s);
+function persist(){localStorage.setItem(LS+'state',JSON.stringify(S));}
+function b64e(s){return btoa(unescape(encodeURIComponent(s)));}
+function b64d(s){return decodeURIComponent(escape(atob(s.replace(/\s/g,''))));}
+function api(method,body){
+ const u=`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}`+(method==='GET'?`?ref=${cfg.branch}&t=${Date.now()}`:'');
+ return fetch(u,{method,headers:{Authorization:'Bearer '+cfg.token,Accept:'application/vnd.github+json'},body:body?JSON.stringify(body):undefined});
+}
+function merge(remote){let changed=false;
+ for(const[k,v]of Object.entries(remote.items||{})){
+  const l=S.items[k];
+  if(!l||(v.at||0)>(l.at||0)){S.items[k]=v;changed=true;}
+ }return changed;}
+async function pull(silent){if(!cfg)return;
+ try{const r=await api('GET');
+  if(r.status===404){sha=null;return;}
+  if(!r.ok)throw new Error('GET '+r.status);
+  const j=await r.json();sha=j.sha;
+  const remote=JSON.parse(b64d(j.content));
+  if(merge(remote)){persist();render();}
+  if(!silent)setStatus('ok','Synced '+now());
+ }catch(e){setStatus('err','Sync error — tap ⚙');console.warn(e);}}
+async function push(){if(!cfg||!dirty)return;setStatus('busy','Saving…');
+ try{
+  const g=await api('GET');
+  if(g.ok){const j=await g.json();sha=j.sha;merge(JSON.parse(b64d(j.content)));}
+  else if(g.status!==404)throw new Error('GET '+g.status);
+  const body={message:'tracker: progress update',content:b64e(JSON.stringify(S,null,1)),branch:cfg.branch};
+  if(sha)body.sha=sha;
+  const p=await api('PUT',body);
+  if(p.status===409||p.status===422){sha=null;dirty=true;return push();}
+  if(!p.ok)throw new Error('PUT '+p.status);
+  const pj=await p.json();sha=pj.content.sha;dirty=false;persist();
+  setStatus('ok','Synced '+now());
+ }catch(e){setStatus('err','Save failed — will retry');console.warn(e);setTimeout(()=>{if(dirty)push();},8000);}}
+function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+function setStatus(cls,txt){const p=$('#sync');p.className='pill '+cls;p.textContent=txt;}
+function toggle(id){
+ const cur=S.items[id];
+ if(cur&&cur.d){delete S.items[id];}
+ else S.items[id]={d:1,by:(cfg&&cfg.name)||'??',at:Date.now()};
+ persist();dirty=true;
+ clearTimeout(saveTimer);saveTimer=setTimeout(push,1500);
+ if(!cfg)setStatus('','Local only — connect GitHub to share');
+ render();maybeHop();
+}
+function startPolling(){clearInterval(polling);
+ polling=setInterval(()=>{if(document.visibilityState==='visible'&&!dirty)pull(true);},20000);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cfg)pull(true);});
+
+/* ================= RENDER ================= */
+const ALL=[...SCHED_ITEMS,...D.ms,...Object.values(D.pipe).flat(),...Object.values(D.qa).flat(),...Object.values(D.rel).flat(),...Object.values(D.asset).flat(),...RISK_ITEMS];
+function done(id){return S.items[id]&&S.items[id].d;}
+function pct(pre){const l=ALL.filter(i=>i.id.startsWith(pre));if(!l.length)return 0;return Math.round(100*l.filter(i=>done(i.id)).length/l.length);}
+function overall(){return Math.round(100*ALL.filter(i=>done(i.id)).length/ALL.length);}
+function itemHTML(it,extra){const d=done(it.id);const m=S.items[it.id];
+ return `<div class="item ${d?'done':''}"><button class="sq" aria-pressed="${!!d}" aria-label="${it.t.replace(/"/g,'')}" data-id="${it.id}"></button>
+ <div class="lbl">${extra||''}${it.t}${d?`<span class="meta">✓ ${m.by} · ${new Date(m.at).toLocaleDateString([],{day:'numeric',month:'short'})}</span>`:''}</div></div>`;}
+function group(title,list,extraFn){const dn=list.filter(i=>done(i.id)).length,pc=Math.round(100*dn/list.length);
+ return `<div class="grp"><div class="gh">${title}<span class="mini">${dn}/${list.length}</span></div>
+ <div class="bar ${pc===100?'full':''}"><i style="width:${pc}%"></i></div>
+ ${list.map(i=>itemHTML(i,extraFn&&extraFn(i))).join('')}</div>`;}
+function ring(name,pc){const r=30,c=2*Math.PI*r,o=c*(1-pc/100);
+ return `<div class="ring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="${r}" fill="none" stroke="rgba(138,90,43,.25)" stroke-width="8"/>
+ <circle cx="37" cy="37" r="${r}" fill="none" stroke="${pc===100?'#3f8d57':'#c8902f'}" stroke-width="8" stroke-linecap="round"
+ stroke-dasharray="${c}" stroke-dashoffset="${o}" transform="rotate(-90 37 37)" style="transition:stroke-dashoffset .6s"/>
+ <text x="37" y="43" text-anchor="middle" class="pc">${pc}%</text></svg><div class="nm">${name}</div></div>`;}
+
+const TABS=[
+ {n:'Overview',f(){const ov=overall();
+  return `<h2>Mission control</h2>
+  <p><b>${ov}%</b> of all ${ALL.length} tracked items complete. Build window: 3–17 July · closed test running from Day 3 · open release ≈ Day 22–28 (new-personal-account path).</p>
+  <div class="rings">${ring('Overall',ov)}${ring('Schedule',pct('day'))}${ring('Dev',pct('dev'))}${ring('Art',pct('art'))}${ring('Audio',pct('audio'))}${ring('UI/UX',pct('ui'))}${ring('QA',pct('qa'))}${ring('Release',pct('rel'))}${ring('Assets',pct('asset'))}</div>
+  <h3>Milestones</h3>${group('Exit criteria in the Production Plan §6',D.ms)}
+  <div class="note"><b>Slip rule:</b> any day ending &gt;3 h behind demotes the lowest module (M5→M6→M9½→M2½) to v1.1 the same evening. The date never moves.</div>`;},
+ },
+ {n:'Schedule',f(){let h='<h2>15-day schedule</h2><p>Two lanes, ~3 h/person/day. ★ marks a milestone day. Tags map to the Production Plan modules.</p>';
+  for(let i=0;i<15;i++){const a=SCHED_ITEMS[i*2],b=SCHED_ITEMS[i*2+1];
+   h+=group(`Day ${a.day} <span class="mini" style="margin-left:8px">${a.tags}</span>`,[a,b],it=>`<span class="tag ${it.who==='B'?'b':''}">${it.who}</span>`);}
+  return h;}},
+ {n:'Pipelines',f(){return `<h2>Pipeline checklists</h2>
+  ${group('Dev — Person A lead',D.pipe.dev)}${group('Art — Person B lead',D.pipe.art)}${group('Design — shared',D.pipe.design)}${group('Audio — Person B lead',D.pipe.audio)}${group('UI/UX — shared',D.pipe.ui)}`;}},
+ {n:'QA',f(){return `<h2>QA &amp; test plan</h2>
+  <table><tr><th>Sev</th><th>Rule</th></tr><tr><td><span class="chip H">S1</span></td><td>Crash / data loss / purchase failure — RC blocks</td></tr><tr><td><span class="chip H">S2</span></td><td>Core feature wrong — RC blocks</td></tr><tr><td><span class="chip M">S3</span></td><td>Degraded, workaround exists — fix in test window</td></tr><tr><td><span class="chip L">S4</span></td><td>Polish — v1.1 backlog</td></tr></table>
+  ${group('Logic & rules parity',D.qa.L)}${group('App behaviour',D.qa.A)}${group('Monetization & services',D.qa.M)}${group('Performance',D.qa.P)}
+  <div class="note">Regression bundle (run at M4, RC, and any post-RC fix): full automated logic suite + A-01…A-07 + M-01/03/05 + one full win and one engineered loss with audio &amp; haptics.</div>`;}},
+ {n:'Release',f(){let h='<h2>Build &amp; release — Google Play</h2><div class="warn"><b>The clock rule:</b> 12+ testers must stay opted-in for 14 continuous days before you can apply for production. Check the count daily; dips reset progress.</div>';
+  for(const[k,v]of Object.entries(D.rel))h+=group(k,v);return h;}},
+ {n:'Assets',f(){let h='<h2>Asset tracker</h2><p>×3 = one per theme (Wood / Ebony / Marble).</p>';
+  for(const[k,v]of Object.entries(D.asset))h+=group(k,v);return h;}},
+ {n:'Design',f(){return `<h2>Design digest (GDD + UI/UX)</h2>
+  <h3>Pillars</h3><p><b>Tactile</b> (wood sound, hops, haptics) · <b>Learnable depth</b> (Warnsdorff hints that teach) · <b>Respectful sessions</b> (1–5 min, no energy systems).</p>
+  <h3>Difficulty & hints</h3><table><tr><th>Tier</th><th>Behaviour</th></tr><tr><td>Apprentice</td><td>Legal moves + best move always shown</td></tr><tr><td>Knight (default)</td><td>Legal moves shown</td></tr><tr><td>Master</td><td>No highlights</td></tr></table>
+  <p>Hint button: reveals Warnsdorff move for 2.6 s. Tie-breaks: lowest onward degree → farther from centre → lowest index.</p>
+  <h3>Solvability (unit-tested facts)</h3><table><tr><th>Board</th><th>Open tour?</th></tr><tr><td>5×5</td><td>Only from squares where (row+col) is even — 13 of 25</td></tr><tr><td>6×6 / 7×7 / 8×8</td><td>Yes</td></tr><tr><td>4×4</td><td>Never — excluded from UI</td></tr></table>
+  <h3>Ads & IAP rules</h3><p>Interstitials only between games · never first 2 sessions · ≤1 per 3 rounds · ≥3 min apart · never while the stuck banner shows · gone forever with the “Royal Stable” purchase (also unlocks Ebony + Marble themes).</p>
+  <h3>Canonical palette</h3><div class="pal">${D.pal.map(p=>`<div><span class="sw" style="background:${p[1]}"></span>${p[0]}<br>${p[1]}</div>`).join('')}</div>
+  <h3>Haptics map</h3><p>Hop/place: light tick · Invalid: reject double · Win: short-short-long · Lose: soft thud · Buttons: subtle tick.</p>`;}},
+ {n:'Tech',f(){return `<h2>Tech digest (TDD + Audio + Save)</h2>
+  <h3>Web → Unity mapping</h3><table><tr><th>Web (JS)</th><th>Unity (C#)</th><th>Notes</th></tr>${D.map.map(r=>`<tr><td style="font-family:var(--mono);font-size:12px">${r[0]}</td><td style="font-family:var(--mono);font-size:12px">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>
+  <h3>Performance budgets</h3><p>60 fps sustained · zero GC allocs/frame in play · cold start &lt;3 s · &lt;150 MB PSS · AAB &lt;40 MB.</p>
+  <h3>SFX bake recipes (exact synth params)</h3><table><tr><th>Sound</th><th>Recipe</th><th>File</th></tr>${D.sfx.map(r=>`<tr><td>${r[0]}</td><td style="font-family:var(--mono);font-size:11.5px">${r[1]}</td><td style="font-family:var(--mono);font-size:11.5px">${r[2]}</td></tr>`).join('')}</table>
+  <h3>Save files</h3><p style="font-family:var(--mono);font-size:12.5px">settings.v1.json — schema, boardSize 5|6|7|8, difficulty, sound, music, hints, ambience(false), haptics, theme<br>records.v1.json — bestTime{size:ms}, games[≤12]{size,result,moves,timeMs,hintsUsed,date}<br>entitlements.v1.json — royalStable cache (Billing is authoritative)</p>
+  <p>Atomic writes (tmp → replace) · corrupt file → *.bad + defaults · migrations gate on schema int.</p>`;}},
+ {n:'Risks',f(){return `<h2>Risk register</h2>
+  <table><tr><th>ID</th><th>Risk</th><th>L</th><th>I</th><th>Mitigation</th><th>Owner</th></tr>
+  ${D.risk.map(r=>`<tr style="${done('risk.'+r[0].toLowerCase())?'opacity:.45':''}"><td><b>${r[0]}</b></td><td>${r[1]}</td><td><span class="chip ${r[2]}">${r[2]}</span></td><td><span class="chip ${r[3]}">${r[3]}</span></td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('')}</table>
+  ${group('Close a risk when its mitigation is proven',RISK_ITEMS)}`;}}
+];
+
+let tab=+(localStorage.getItem(LS+'tab')||0);
+function render(){
+ $('#tabs').innerHTML=TABS.map((t,i)=>{const pre={1:'day',2:null,3:'qa',4:'rel',5:'asset',8:'risk'}[i];
+  const badge=pre?` <span class="n">${pct(pre)}%</span>`:(i===0?` <span class="n">${overall()}%</span>`:'');
+  return `<button class="${i===tab?'on':''}" data-t="${i}">${t.n}${badge}</button>`;}).join('');
+ $('#main').innerHTML=`<div class="panel">${TABS[tab].f()}</div>`;
+ const ov=overall(),cells=15;
+ $('#strip').innerHTML=Array.from({length:cells},(_,i)=>`<i class="${i<Math.round(ov/100*cells)?'fill':''}"></i>`).join('');
+ const d=Math.floor((Date.now()-new Date('2026-07-03').getTime())/864e5)+1;
+ $('#daychip').textContent=(d>=1&&d<=15?`Day ${d} of 15 · `:d>15?`Post-build day ${d} · `:'Starts 3 July · ')+`${ov}% complete`;
+}
+document.addEventListener('click',e=>{
+ const sq=e.target.closest('.sq');if(sq){toggle(sq.dataset.id);return;}
+ const tb=e.target.closest('nav button');if(tb){tab=+tb.dataset.t;localStorage.setItem(LS+'tab',tab);render();}
+});
+
+/* ---------- signature: the real horse hops ---------- */
+let hopPos=0,lastOv=-1;
+function maybeHop(){const ov=overall();
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches){lastOv=ov;return;}
+ if(lastOv>=0&&Math.floor(ov/7)!==Math.floor(lastOv/7))hop();
+ lastOv=ov;}
+function hop(){const st=$('#strip'),h=$('#horse'),shw=$('#hsh');
+ const w=st.clientWidth/15;hopPos=(hopPos+2)%13;
+ const x=hopPos*w;
+ h.animate([{transform:`translate(${h._x||0}px,0) scale(1)`},{transform:`translate(${((h._x||0)+x)/2}px,-30px) scale(1.08)`,offset:.5},{transform:`translate(${x}px,0) scale(1)`}],{duration:380,easing:'ease-in-out'}).onfinish=()=>{h.style.transform=`translate(${x}px,0)`;h._x=x;};
+ shw.animate([{transform:`translate(${shw._x||0}px,0) scale(1)`,opacity:.4},{transform:`translate(${((shw._x||0)+x)/2}px,0) scale(.6)`,opacity:.15,offset:.5},{transform:`translate(${x}px,0) scale(1)`,opacity:.4}],{duration:380,easing:'ease-in-out'}).onfinish=()=>{shw.style.transform=`translate(${x}px,0)`;shw._x=x;};}
+setTimeout(hop,700);
+
+/* ---------- config modal ---------- */
+const dlg=$('#cfg');
+$('#cfgbtn').onclick=()=>{if(cfg){$('#f_owner').value=cfg.owner;$('#f_repo').value=cfg.repo;$('#f_branch').value=cfg.branch;$('#f_path').value=cfg.path;$('#f_token').value=cfg.token;$('#f_name').value=cfg.name;}dlg.showModal();};
+$('#cfgcancel').onclick=()=>dlg.close();
+$('#cfgsave').onclick=()=>{
+ cfg={owner:$('#f_owner').value.trim(),repo:$('#f_repo').value.trim(),branch:$('#f_branch').value.trim()||'main',
+  path:$('#f_path').value.trim()||'progress.json',token:$('#f_token').value.trim(),name:($('#f_name').value.trim()||'??').toUpperCase()};
+ if(!cfg.owner||!cfg.repo||!cfg.token){alert('Owner, repo, and token are required.');return;}
+ localStorage.setItem(LS+'cfg',JSON.stringify(cfg));dlg.close();
+ setStatus('busy','Connecting…');pull().then(()=>{if(dirty)push();startPolling();});};
+$('#syncnow').onclick=()=>{if(!cfg){dlg.showModal();return;}pull().then(push);};
+
+render();
+if(cfg){setStatus('busy','Connecting…');pull().then(()=>{startPolling();});}
+else setStatus('','Local only — connect GitHub to share');
+</script>
+</body>
+</html>
