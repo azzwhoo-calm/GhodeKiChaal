@@ -12,6 +12,10 @@ Unity 6 · C# · uGUI · Android 10+ (portrait) · namespace `Ghode.*` · packag
 
 ```
 Assets/_Ghode/
+├── Art/                          → sprites (Wooden_Sprites), fonts, materials, models, textures, VFX, animations
+├── Audio/                        → SFX/ and Ambience/ clips for AudioManager
+├── Data/                         → ScriptableObject configs (empty for now)
+├── Prefabs/                      → prefab home for the post-prototype UI refactor
 ├── Scripts/
 │   ├── Ghode.Runtime.asmdef      → everything below except Core
 │   ├── Core/                     → PURE C# — no UnityEngine (Ghode.Core.asmdef, noEngineReferences)
