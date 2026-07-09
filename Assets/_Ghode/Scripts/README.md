@@ -4,7 +4,7 @@ Unity 6 · C# · uGUI · Android 10+ (portrait) · namespace `Ghode.*` · packag
 
 ## How to test in the Editor (3 lines)
 
-1. Open **any** scene (even an empty one) and press **Play** — `GameBootstrap` self-builds the whole UI and lands on the Main Menu.
+1. Open **`Assets/Scenes/Boot.unity`** (the build's entry scene) and press **Play** — the `Bootstrap` object reuses the `GameManager` (GameController) and `AudioManager` wired in the scene and builds the UI. Opening **any** other scene (even an empty one) still works: `GameBootstrap` auto-creates the managers it can't find, so zero-setup testing is unchanged.
 2. Mouse = touch: New Game → tap a square to place the horse → hop along the highlighted L-moves. HUD has Hint / Undo / Restart / Sound / Menu.
 3. Unit tests: **Window → General → Test Runner → EditMode → Run All** (10 tests, all green).
 
@@ -57,7 +57,13 @@ Assets/_Ghode/
 - All 10 EditMode tests pass
 
 **Stubbed / TODO(azzwhoo) — search the code for `TODO(azzwhoo)`:**
-- Refactor code-built UI into a proper Boot scene + prefabs (post-prototype)
+- Finish the Boot-scene migration: the **manager layer is now scene-authored**
+  (`Boot.unity` → `Bootstrap` holds `GameBootstrap`; its `GameManager` /
+  `AudioManager` children hold the real components, wired into `GameBootstrap`'s
+  `_controller` / `_audio` fields). Remaining Editor pass: turn the four screens
+  into prefabs under a Canvas in the scene and wire their roots so `BuildUi()`
+  reuses them instead of code-building. `ThemeManager` / `MonetizationManager` /
+  `IAPService` / `AdsService` GameObjects are empty placeholders for Tier 2–3.
 - Assign real SFX + ambience clips in `AudioManager` (currently silent no-ops)
 - Assign the carved-horse sprite in `CellView` (currently a gold square)
 - Dashed visited-path overlay in `BoardView`

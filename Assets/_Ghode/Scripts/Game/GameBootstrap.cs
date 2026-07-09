@@ -19,11 +19,26 @@ namespace Ghode.Game
     /// with zero manual scene setup — our whole "testable from an empty scene"
     /// strategy hangs off this class.
     /// </summary>
-    // TODO(azzwhoo): later, refactor this into a proper Boot scene + prefabs
-    // (the normal uGUI workflow). Code-built UI is how we get zero-setup
-    // testability today, because Claude Code cannot click around the Editor.
+    // Scene-first with a code-built fallback. When this component lives in the
+    // Boot scene it reuses the managers wired there (see _controller / _audio),
+    // and only the UI is still built in code; in a bare scene (an EditMode test,
+    // or an empty SampleScene) it auto-creates everything, so "press Play from
+    // nothing" keeps working exactly as before.
+    //
+    // TODO(azzwhoo): finish the migration in-Editor — turn the four code-built
+    // screens into prefabs, drop them under a Canvas in Boot.unity, and wire the
+    // roots here so BuildUi() can reuse them. The manager layer is already
+    // scene-authored (Boot.unity → Bootstrap → GameManager / AudioManager).
     public class GameBootstrap : MonoBehaviour
     {
+        // Managers authored in the Boot scene and assigned in the Inspector.
+        // Left null in a bare scene, where ComposeManagers() creates them on the
+        // fly. Unity's fake-null means an unassigned reference reads as == null
+        // here — which is exactly the cue to fall back to code.
+        [Header("Wired in Boot.unity — auto-built when absent")]
+        [SerializeField] GameController _controller;
+        [SerializeField] AudioManager _audio;
+
         // Guards against building the game twice (e.g. scene reloads).
         static bool _booted;
 
@@ -43,7 +58,7 @@ namespace Ghode.Game
         static void AutoBoot()
         {
             if (_booted) return;
-            if (FindAnyObjectByType<GameBootstrap>() != null) return; // scene already has one
+            if (FindAnyObjectByType<GameBootstrap>(FindObjectsInactive.Include) != null) return; // scene already has one
 
             var go = new GameObject("~GhodeGame (auto-built)");
             go.AddComponent<GameBootstrap>(); // Awake below does the real work
@@ -62,14 +77,41 @@ namespace Ghode.Game
             BuildWorld();
         }
 
-        // Builds and wires everything, in dependency order.
+        // Builds and wires everything, in dependency order:
+        // managers first (reused from the scene when present), then the UI.
         void BuildWorld()
         {
-            // --- The brains and the sound desk -----------------------------
-            var audio = gameObject.AddComponent<AudioManager>();
-            var controller = gameObject.AddComponent<GameController>();
-            controller.Init(audio); // loads saved settings + records
+            var controller = ComposeManagers();
+            BuildUi(controller);
+        }
 
+        // --- The brains and the sound desk ---------------------------------
+        // Reuse the GameController and AudioManager authored in the Boot scene;
+        // create whichever one is missing so a bare scene still boots. Returns
+        // the initialised controller for the UI step.
+        GameController ComposeManagers()
+        {
+            if (_audio == null) _audio = FindOrCreate<AudioManager>();
+            if (_controller == null) _controller = FindOrCreate<GameController>();
+            _controller.Init(_audio); // loads saved settings + records
+            return _controller;
+        }
+
+        // Finds a manager already living in the scene, or adds a fresh one to the
+        // bootstrap object as a fallback. Includes inactive objects so a disabled
+        // manager in the scene is reused rather than silently duplicated.
+        T FindOrCreate<T>() where T : Component
+        {
+            var existing = FindAnyObjectByType<T>(FindObjectsInactive.Include);
+            return existing != null ? existing : gameObject.AddComponent<T>();
+        }
+
+        // Builds the code-driven uGUI world (Canvas, safe area, the four screens)
+        // and hands the screen switcher to the controller. This is the part still
+        // awaiting the in-Editor prefab pass; until then it runs identically in
+        // the Boot scene and in a bare test scene.
+        void BuildUi(GameController controller)
+        {
             // --- Input plumbing --------------------------------------------
             EnsureEventSystem();
 
