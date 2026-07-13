@@ -263,7 +263,7 @@ PlayerSettings:
   useCustomBaseGradleTemplate: 0
   useCustomGradlePropertiesTemplate: 0
   useCustomGradleSettingsTemplate: 0
-  useCustomProguardFile: 0
+  useCustomProguardFile: 1
   AndroidTargetArchitectures: 2
   AndroidAllowedArchitectures: -13
   AndroidSplashScreenScale: 0
@@ -287,7 +287,7 @@ PlayerSettings:
     height: 180
     banner: {fileID: 0}
   androidGamepadSupportLevel: 0
-  AndroidMinifyRelease: 0
+  AndroidMinifyRelease: 1
   AndroidMinifyDebug: 0
   AndroidValidateAppBundleSize: 1
   AndroidAppBundleSizeToValidate: 150
@@ -679,7 +679,7 @@ PlayerSettings:
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
     Android: SENTIS_ANALYTICS_ENABLED
-    Standalone: APP_UI_EDITOR_ONLY;SENTIS_ANALYTICS_ENABLED
+    Standalone: APP_UI_EDITOR_ONLY;IAP_FAKE_STORE_DEFAULT;SENTIS_ANALYTICS_ENABLED
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

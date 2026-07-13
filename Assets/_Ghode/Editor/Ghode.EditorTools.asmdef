@@ -1,13 +1,10 @@
 {
-    "name": "Ghode.Runtime",
-    "rootNamespace": "Ghode",
-    "references": [
-        "Ghode.Core",
-        "UnityEngine.UI",
-        "Unity.InputSystem",
-        "Unity.Purchasing"
+    "name": "Ghode.EditorTools",
+    "rootNamespace": "Ghode.EditorTools",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
     ],
-    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

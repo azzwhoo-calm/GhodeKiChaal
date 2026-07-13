@@ -117,6 +117,13 @@ namespace Ghode.UI
             _ambienceToggle.SetValue(_gc.Settings.Ambience);
             _reducedMotionToggle.SetValue(_gc.Settings.ReducedMotion);
             _themeSelector.SetSelected((int)_gc.Settings.Theme);
+
+            // Ebony and Marble look locked until the Royal Stable is owned.
+            // Tapping one anyway asks the controller, which politely refuses
+            // (the shop on the main menu is where the unlock lives).
+            bool owned = _gc.RoyalStableOwned;
+            _themeSelector.SetDimmed(1, !owned);
+            _themeSelector.SetDimmed(2, !owned);
         }
     }
 }

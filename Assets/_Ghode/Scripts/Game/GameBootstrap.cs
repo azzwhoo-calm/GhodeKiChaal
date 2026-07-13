@@ -78,9 +78,11 @@ namespace Ghode.Game
         }
 
         // Builds and wires everything, in dependency order:
-        // managers first (reused from the scene when present), then the UI.
+        // crash capture first (nothing may crash unrecorded), then managers
+        // (reused from the scene when present), then the UI.
         void BuildWorld()
         {
+            Ghode.Analytics.CrashReporting.Init();
             var controller = ComposeManagers();
             BuildUi(controller);
         }
@@ -94,6 +96,7 @@ namespace Ghode.Game
             if (_audio == null) _audio = FindOrCreate<AudioManager>();
             if (_controller == null) _controller = FindOrCreate<GameController>();
             _controller.Init(_audio); // loads saved settings + records
+            _controller.ConnectServices(); // store + leaderboards (async, optional)
             return _controller;
         }
 

@@ -18,6 +18,7 @@ namespace Ghode.UI
     {
         Image[] _faces;
         Text[] _labels;
+        bool[] _dimmed; // locked-looking options (still tappable — the owner decides)
         int _selected = -1;
         Action<int> _onSelect;
 
@@ -32,6 +33,7 @@ namespace Ghode.UI
             control._onSelect = onSelect;
             control._faces = new Image[options.Length];
             control._labels = new Text[options.Length];
+            control._dimmed = new bool[options.Length];
 
             for (int i = 0; i < options.Length; i++)
             {
@@ -53,7 +55,10 @@ namespace Ghode.UI
             return control;
         }
 
-        // A button was tapped: repaint AND tell the owner (unless nothing changed).
+        // A button was tapped: repaint AND tell the owner (unless nothing
+        // changed). Dimmed options still report the tap — the OWNER decides
+        // what a locked choice does (e.g. the theme picker plays a polite
+        // thud and snaps back), so this control stays rule-free.
         void HandleTap(int index)
         {
             if (index == _selected) return;
@@ -62,8 +67,19 @@ namespace Ghode.UI
         }
 
         /// <summary>
+        /// Mark one option as visually locked (dim label, darker face) — the
+        /// theme picker uses this for the unpurchased themes. Repaint only.
+        /// </summary>
+        public void SetDimmed(int index, bool dimmed)
+        {
+            _dimmed[index] = dimmed;
+            SetSelected(_selected); // repaint with the new look
+        }
+
+        /// <summary>
         /// Highlight one option WITHOUT firing the callback — used to display
-        /// saved settings. (Selected = gold face; others = plain walnut.)
+        /// saved settings. (Selected = gold face; others = plain walnut;
+        /// dimmed = darker face + quiet label.)
         /// </summary>
         public void SetSelected(int index)
         {
@@ -71,8 +87,14 @@ namespace Ghode.UI
             for (int i = 0; i < _faces.Length; i++)
             {
                 bool selected = i == index;
-                _faces[i].color = selected ? UiFactory.Palette.Accent : UiFactory.Palette.ButtonFace;
-                _labels[i].color = selected ? UiFactory.Palette.Walnut : UiFactory.Palette.Parchment;
+                bool dimmed = _dimmed[i] && !selected;
+
+                _faces[i].color = selected ? UiFactory.Palette.Accent
+                    : dimmed ? UiFactory.Palette.Walnut
+                    : UiFactory.Palette.ButtonFace;
+                _labels[i].color = selected ? UiFactory.Palette.Walnut
+                    : dimmed ? UiFactory.Palette.ParchmentDim
+                    : UiFactory.Palette.Parchment;
                 _labels[i].fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
             }
         }

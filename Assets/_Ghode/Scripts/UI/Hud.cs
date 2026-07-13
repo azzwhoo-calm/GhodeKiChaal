@@ -25,6 +25,7 @@ namespace Ghode.UI
         Text _hintsText;
         Button _hintButton;
         Text _soundLabel; // the Sound button's label flips between Sound/Muted
+        long _shownSeconds = -1; // the second currently on the clock text
 
         /// <summary>Build the HUD strip across the top of the game screen.</summary>
         public static Hud Build(RectTransform parent, GameController gc)
@@ -80,11 +81,18 @@ namespace Ghode.UI
 
         void Update()
         {
-            // The clock is the only thing that changes without a StateChanged,
-            // so it alone updates every frame (only while the HUD is visible).
+            // The clock is the only thing that changes without a StateChanged.
+            // It repaints ONLY when the displayed second actually ticks over —
+            // building a fresh string every frame is a per-frame GC allocation,
+            // and the perf budget says zero of those during play (QA P-02).
             if (_gc != null && _gc.Board != null)
             {
-                _timerText.text = TimeFormat.ToClock(_gc.Timer.ReadMs());
+                long seconds = _gc.Timer.ReadMs() / 1000;
+                if (seconds != _shownSeconds)
+                {
+                    _shownSeconds = seconds;
+                    _timerText.text = TimeFormat.ToClock(seconds * 1000);
+                }
             }
         }
 
@@ -98,7 +106,8 @@ namespace Ghode.UI
             _filledText.text = "Filled " + board.VisitedCount + "/" + board.TotalCells;
             _movesText.text = "Moves " + Mathf.Max(0, board.VisitedCount - 1); // hops, not squares
             _hintsText.text = "Hints " + board.HintsUsed;
-            _timerText.text = TimeFormat.ToClock(_gc.Timer.ReadMs());
+            _shownSeconds = _gc.Timer.ReadMs() / 1000;
+            _timerText.text = TimeFormat.ToClock(_shownSeconds * 1000);
 
             // The Hint button only exists while the setting allows hints.
             _hintButton.gameObject.SetActive(_gc.Settings.Hints);

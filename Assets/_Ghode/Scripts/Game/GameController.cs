@@ -6,10 +6,12 @@
 
 using System;
 using UnityEngine;
+using Ghode.Analytics;
 using Ghode.Audio;
 using Ghode.Core;
 using Ghode.Data;
 using Ghode.Haptics;
+using Ghode.Monetization;
 using AppScreen = Ghode.Core.Screen; // our enum; alias avoids UnityEngine.Screen clashes
 
 namespace Ghode.Game
@@ -48,6 +50,25 @@ namespace Ghode.Game
         /// <summary>The sound desk. Set once by <see cref="Init"/>.</summary>
         public AudioManager Audio { get; private set; }
 
+        /// <summary>The player's purchases (cached; billing refreshes it).</summary>
+        public Entitlements Entitlements { get; private set; }
+
+        /// <summary>Real-money store wrapper. Null until <see cref="ConnectServices"/>.</summary>
+        public BillingService Billing { get; private set; }
+
+        /// <summary>Interstitial orchestration (policy + provider seam).</summary>
+        public AdsService Ads { get; } = new AdsService();
+
+        /// <summary>Per-size best-time leaderboards with the offline queue.</summary>
+        public LeaderboardService Leaderboards { get; private set; }
+
+        /// <summary>The event diary (debug backend now, Firebase later).</summary>
+        public AnalyticsService Analytics { get; } =
+            new AnalyticsService(new DebugAnalyticsBackend());
+
+        /// <summary>Does the player own the Royal Stable (themes + no ads)?</summary>
+        public bool RoyalStableOwned => Entitlements != null && Entitlements.royalStable;
+
         /// <summary>Fired after ANY state change. Views repaint when they hear it.</summary>
         public event Action StateChanged;
 
@@ -66,6 +87,15 @@ namespace Ghode.Game
             Audio = audio;
             Settings = SettingsStore.Load();
             Records = RecordsStore.Load();
+            Entitlements = EntitlementsStore.Load();
+
+            // A locked theme in the save without the purchase to back it
+            // (refund? copied save?) quietly falls back to Wood.
+            if (Settings.Theme != Theme.Wood && !RoyalStableOwned)
+            {
+                Settings.Theme = Theme.Wood;
+                SettingsStore.Save(Settings);
+            }
 
             // Make the sound desk match the loaded settings straight away,
             // and the same for the vibration desk and the board's costume.
@@ -73,6 +103,47 @@ namespace Ghode.Game
             Audio.SetAmbience(Settings.Ambience);
             HapticsService.Enabled = Settings.Haptics;
             UI.GhodeTheme.Current = Settings.Theme;
+
+            // The offline-friendly services exist from the start; the store
+            // connection itself waits for ConnectServices (play mode only).
+            Leaderboards = new LeaderboardService(new LocalLeaderboardBackend());
+            Ads.Initialize(RoyalStableOwned, () => new FakeInterstitialProvider());
+            Analytics.SessionStart(Ads.Policy.SessionNumber);
+        }
+
+        /// <summary>
+        /// Step 1½ of startup, PLAY MODE ONLY (GameBootstrap calls it; tests
+        /// never do): connect to the real-money store and sign in to the
+        /// leaderboards. Everything stays playable if either never answers.
+        /// </summary>
+        public void ConnectServices()
+        {
+            Billing = new BillingService();
+            Billing.OnEntitlementChanged += ApplyEntitlement;
+            Billing.Connect();
+
+            // Optional + silent; success flushes the offline score queue.
+            Leaderboards.SignIn(ok => Analytics.SignIn(ok));
+        }
+
+        /// <summary>
+        /// The Royal Stable's delivery point (billing calls this; so do
+        /// tests). Persists the entitlement, kills ads, and repaints — the
+        /// "instant themes" moment.
+        /// </summary>
+        public void ApplyEntitlement(bool owned)
+        {
+            if (Entitlements.royalStable == owned) return;
+
+            Entitlements.royalStable = owned;
+            EntitlementsStore.Save(Entitlements);
+
+            if (owned)
+            {
+                Ads.OnEntitlementGranted();
+                Analytics.Iap("completed");
+            }
+            RaiseChanged();
         }
 
         /// <summary>
@@ -91,7 +162,18 @@ namespace Ghode.Game
         /// <summary>Start a fresh game on a board of the given size and show it.</summary>
         public void NewGame(int size)
         {
+            // Is the player leaving a STUCK board right now? That moment
+            // stays ad-free by design, even though the round did finish.
+            bool leavingStuck = Board != null && Board.Phase == Phase.Lost;
             RecordPendingLossIfAny();
+
+            // The between-games moment — the only point an interstitial may
+            // ever play. AdsPolicy applies every cap; usually this is a no-op.
+            int roundsBanked = Ads.Policy != null ? Ads.Policy.RoundsSinceAd : 0;
+            if (Ads.TryShowInterstitial(leavingStuck))
+            {
+                Analytics.AdShown(roundsBanked);
+            }
 
             Board = new BoardState(size);
             ActiveHint = null;
@@ -101,6 +183,7 @@ namespace Ghode.Game
             Timer.Reset(); // the clock starts on placement, not here
 
             Audio.Play(Sfx.Click);
+            Analytics.GameStart(size, Settings.Difficulty.ToString());
             GoTo(AppScreen.Playing);
         }
 
@@ -232,6 +315,7 @@ namespace Ghode.Game
             Board.NoteHintUsed();
             ActiveHint = best;
             Audio.Play(Sfx.Click);
+            Analytics.HintUsed(Board.Size);
             RaiseChanged();
         }
 
@@ -357,13 +441,63 @@ namespace Ghode.Game
             RaiseChanged();
         }
 
-        /// <summary>Swap the board's costume (Wood / Ebony / Marble).</summary>
+        /// <summary>
+        /// Swap the board's costume. Ebony and Marble belong to the Royal
+        /// Stable — without it the tap is politely refused (the shop on the
+        /// menu explains why).
+        /// </summary>
         public void SetTheme(Theme theme)
         {
+            if (theme != Theme.Wood && !RoyalStableOwned)
+            {
+                Audio.Play(Sfx.InvalidThud);
+                HapticsService.Play(Haptic.Reject);
+                RaiseChanged(); // repaint so the picker snaps back to Wood
+                return;
+            }
+
             Settings.Theme = theme;
             UI.GhodeTheme.Current = theme;
             SettingsStore.Save(Settings);
+            Analytics.ThemeSelected(theme.ToString());
             RaiseChanged(); // every view repaints, picking up the new colors
+        }
+
+        // ------------------------------------------------------------------
+        // The shop (Royal Stable) — thin passthroughs to BillingService
+        // ------------------------------------------------------------------
+
+        /// <summary>Start the Royal Stable purchase (store dialog opens).</summary>
+        public void BuyRoyalStable()
+        {
+            Audio.Play(Sfx.Click);
+            Analytics.Iap("started");
+            Billing?.BuyRoyalStable();
+            RaiseChanged();
+        }
+
+        /// <summary>Re-deliver purchases from an earlier install/device.</summary>
+        public void RestorePurchases()
+        {
+            Audio.Play(Sfx.Click);
+            Billing?.RestorePurchases(ok =>
+            {
+                if (ok) Analytics.Iap("restored");
+                RaiseChanged();
+            });
+            RaiseChanged();
+        }
+
+        /// <summary>One line for the shop UI: store state + price when known.</summary>
+        public string BillingStatusLine
+        {
+            get
+            {
+                if (Billing == null) return "Store not connected";
+                return string.IsNullOrEmpty(Billing.RoyalStablePrice)
+                    ? Billing.Status
+                    : Billing.Status + " · " + Billing.RoyalStablePrice;
+            }
         }
 
         // ------------------------------------------------------------------
@@ -406,6 +540,7 @@ namespace Ghode.Game
         {
             CurrentScreen = screen;
             _screens?.Show(screen);
+            Analytics.ScreenView(screen.ToString());
             RaiseChanged();
         }
 
@@ -443,6 +578,14 @@ namespace Ghode.Game
 
             LastGameWasNewBest = Records.RecordGame(record) && won;
             RecordsStore.Save(Records);
+
+            // Every finished round feeds the ad pacing; only WINS may travel
+            // to a leaderboard (a fast loss is nobody's high score).
+            Ads.OnRoundFinished();
+            if (won) Leaderboards.SubmitWin(record.boardSize, record.timeMs);
+
+            Analytics.GameEnd(record.boardSize, Settings.Difficulty.ToString(),
+                won, record.moves, record.timeMs, record.hintsUsed);
         }
     }
 }

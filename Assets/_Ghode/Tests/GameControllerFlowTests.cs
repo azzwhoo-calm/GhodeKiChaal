@@ -14,6 +14,7 @@ using Ghode.Audio;
 using Ghode.Core;
 using Ghode.Data;
 using Ghode.Game;
+using Ghode.Monetization;
 using AppScreen = Ghode.Core.Screen;
 
 namespace Ghode.Tests
@@ -384,6 +385,92 @@ namespace Ghode.Tests
         }
 
         // ------------------------------------------------------------------
+        // Royal Stable: theme gating, entitlement persistence, ads, scores
+        // ------------------------------------------------------------------
+
+        [Test]
+        public void LockedThemes_AreRefused_UntilTheRoyalStableArrives()
+        {
+            _gc.SetTheme(Theme.Ebony);
+            Assert.AreEqual(Theme.Wood, _gc.Settings.Theme, "Ebony is paid content.");
+
+            _gc.ApplyEntitlement(true); // the purchase arrives (billing or restore)
+
+            _gc.SetTheme(Theme.Ebony);
+            Assert.AreEqual(Theme.Ebony, _gc.Settings.Theme, "…and unlocks instantly.");
+        }
+
+        [Test]
+        public void Entitlement_SurvivesRelaunch_AndAdsStayDead()
+        {
+            _gc.ApplyEntitlement(true);
+            for (int i = 0; i < 9; i++) _gc.Ads.OnRoundFinished();
+            Assert.IsFalse(_gc.Ads.TryShowInterstitial(stuckVisible: false),
+                "Owned = ad-free, instantly and forever.");
+
+            // A "fresh launch" reads the cached entitlement from disk.
+            var go2 = new GameObject("SecondLaunch");
+            try
+            {
+                var gc2 = go2.AddComponent<GameController>();
+                gc2.Init(go2.AddComponent<AudioManager>());
+                Assert.IsTrue(gc2.RoyalStableOwned, "entitlements.v1.json carries the purchase.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(go2);
+            }
+        }
+
+        [Test]
+        public void UnbackedLockedTheme_FallsBackToWood_OnLaunch()
+        {
+            // A save claiming Ebony WITHOUT the purchase behind it (refund,
+            // copied save) quietly reverts to Wood at load time.
+            SettingsStore.Save(new Settings { Theme = Theme.Ebony });
+
+            var go2 = new GameObject("SuspiciousLaunch");
+            try
+            {
+                var gc2 = go2.AddComponent<GameController>();
+                gc2.Init(go2.AddComponent<AudioManager>());
+                Assert.AreEqual(Theme.Wood, gc2.Settings.Theme);
+            }
+            finally
+            {
+                Object.DestroyImmediate(go2);
+            }
+        }
+
+        [Test]
+        public void Win_FeedsAdPacing_AndSubmitsToTheLeaderboard()
+        {
+            var backend = new LocalLeaderboardBackend();
+            _gc.Leaderboards.Backend = backend;
+            _gc.Leaderboards.SignIn();
+
+            WinOneGame();
+
+            Assert.AreEqual(1, backend.Received.Count, "A win travels to its board.");
+            Assert.AreEqual(LeaderboardService.BoardIdFor(5), backend.Received[0].boardId);
+            Assert.AreEqual(1, _gc.Ads.Policy.RoundsSinceAd, "A finished round feeds ad pacing.");
+        }
+
+        [Test]
+        public void Losses_FeedAdPacing_ButNeverALeaderboard()
+        {
+            var backend = new LocalLeaderboardBackend();
+            _gc.Leaderboards.Backend = backend;
+            _gc.Leaderboards.SignIn();
+
+            DriveIntoStuck();
+            _gc.GoMenu(); // walk away → the loss is recorded
+
+            Assert.AreEqual(0, backend.Received.Count, "A loss is nobody's high score.");
+            Assert.AreEqual(1, _gc.Ads.Policy.RoundsSinceAd);
+        }
+
+        // ------------------------------------------------------------------
         // Navigation
         // ------------------------------------------------------------------
 
@@ -406,6 +493,7 @@ namespace Ghode.Tests
             _gc.SetDifficulty(Difficulty.Master);
             _gc.SetSound(false);
             _gc.SetHaptics(false);
+            _gc.ApplyEntitlement(true); // Ebony is paid — own it before picking it
             _gc.SetTheme(Theme.Ebony);
 
             // A "fresh launch": a brand-new controller loading the same saves.

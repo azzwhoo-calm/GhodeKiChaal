@@ -1,0 +1,29 @@
+# proguard-user.txt — R8 keep rules for Ghode Ki Chaal release builds.
+# Release minification is ON (Player Settings → Publishing → Minify Release),
+# so anything reached only via reflection/JNI must be kept explicitly.
+# Verify on the FIRST device build: install from the closed track and run
+# one full game + one purchase — a bad rule shows up as a crash or a
+# silently-dead store.
+
+# ---- Unity engine glue (reflection-heavy, standard keeps) -------------------
+-keep class com.unity3d.player.** { *; }
+-keep class org.fmod.** { *; }
+
+# ---- Google Play Billing via Unity IAP --------------------------------------
+-keep class com.android.vending.billing.** { *; }
+-keep class com.android.billingclient.** { *; }
+-keep class com.unity.purchasing.** { *; }
+
+# ---- Android Vibrator access from HapticsService (JNI by name) --------------
+-keep class android.os.VibrationEffect { *; }
+
+# ---- TODO(azzwhoo): uncomment as each SDK lands (see PLAY_CONSOLE_TODO.md) --
+# Google Play Games Services:
+#-keep class com.google.android.gms.games.** { *; }
+#-keep class com.google.games.bridge.** { *; }
+# Google Mobile Ads (AdMob) + UMP:
+#-keep class com.google.android.gms.ads.** { *; }
+#-keep class com.google.android.ump.** { *; }
+# Firebase (Analytics + Crashlytics):
+#-keep class com.google.firebase.** { *; }
+#-keep class com.google.android.gms.measurement.** { *; }

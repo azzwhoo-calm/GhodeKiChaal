@@ -22,6 +22,10 @@ namespace Ghode.UI
         SegmentedControl _sizeSelector;
         SegmentedControl _difficultySelector;
         Text _bestTimesText;
+        Text _shopPitch;
+        Button _buyButton;
+        Button _restoreButton;
+        Text _shopStatus;
 
         /// <summary>Create the whole menu under the safe area and wire it up.</summary>
         public static MainMenuScreen Build(RectTransform parent, GameController gc)
@@ -100,6 +104,31 @@ namespace Ghode.UI
             _bestTimesText = UiFactory.CreateText("BestTimes", root, "", 42, UiFactory.Palette.Parchment);
             UiFactory.Layout(_bestTimesText, preferredHeight: 210f); // four rows now (7×7 joined)
 
+            UiFactory.Spacer(root, 0.5f);
+
+            // --- The shop: one purchase, honestly described ------------------
+            _shopPitch = UiFactory.CreateText("RoyalStablePitch", root,
+                "Royal Stable — Ebony & Marble themes, no ads, forever", 34,
+                UiFactory.Palette.ParchmentDim);
+            UiFactory.Layout(_shopPitch, preferredHeight: 46f);
+
+            var shopRow = UiFactory.CreateRect("ShopRow", root);
+            UiFactory.Layout(shopRow, preferredHeight: 132f);
+            UiFactory.HStack(shopRow, 14f, new RectOffset(0, 0, 0, 0));
+
+            _buyButton = UiFactory.CreateButton("BuyRoyalStableButton", shopRow,
+                "Unlock Royal Stable", 40, _gc.BuyRoyalStable,
+                UiFactory.Palette.Accent, UiFactory.Palette.Walnut);
+            UiFactory.Layout(_buyButton, preferredHeight: 132f, flexibleWidth: 2f);
+
+            _restoreButton = UiFactory.CreateButton("RestorePurchasesButton", shopRow,
+                "Restore", 36, _gc.RestorePurchases);
+            UiFactory.Layout(_restoreButton, preferredHeight: 132f, flexibleWidth: 1f);
+
+            _shopStatus = UiFactory.CreateText("ShopStatus", root, "", 28,
+                UiFactory.Palette.ParchmentDim);
+            UiFactory.Layout(_shopStatus, preferredHeight: 36f);
+
             UiFactory.Spacer(root, 1f);
         }
 
@@ -123,6 +152,14 @@ namespace Ghode.UI
                 lines += size + "×" + size + "   " + time + "\n";
             }
             _bestTimesText.text = lines.TrimEnd('\n');
+
+            // The shop: buttons until owned, a thank-you line afterwards.
+            bool owned = _gc.RoyalStableOwned;
+            _shopPitch.gameObject.SetActive(!owned);
+            _buyButton.transform.parent.gameObject.SetActive(!owned);
+            _shopStatus.text = owned
+                ? "Royal Stable owned — themes unlocked, ads off. Thank you!"
+                : _gc.BillingStatusLine;
         }
     }
 }

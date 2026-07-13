@@ -133,6 +133,68 @@ pause panel auto-sizes (ContentSizeFitter), so new rows can't push buttons
 off-panel. Still open from the accessibility list: TalkBack/screen-reader
 support and the font-scale pass — both need on-device work.
 
+### Monetization & online (Tier 6)
+
+**One product:** `royal_stable` (non-consumable) = Ebony + Marble themes
+unlocked + ads removed, forever.
+
+- **Billing — REAL** (`Monetization/BillingService`): Unity IAP v5
+  (`StoreController`): connect → fetch products → fetch purchases; purchases
+  use the mandatory two-step flow (OnPurchasePending → grant → Confirm), so
+  a crash mid-purchase re-delivers on next launch. The editor runs Unity's
+  fake store; the `IAP_FAKE_STORE_DEFAULT` define (Standalone group) makes it
+  auto-succeed silently so purchases are testable headless. Before RC: create
+  the product in the Play Console and add receipt validation (see the
+  TODO(azzwhoo) in BillingService).
+- **Entitlement cache** (`entitlements.v1.json` via SaveService): billing is
+  authoritative, the cache covers offline launches.
+  `GameController.ApplyEntitlement` is the single delivery point: persist →
+  kill ads → repaint (instant theme unlock). A save claiming a locked theme
+  without the purchase reverts to Wood at load.
+- **Ads — policy real, SDK seam** (`Core/AdsPolicy` + `Monetization/AdsService`):
+  every GDD cap is enforced and unit-tested (between games only, sessions 1–2
+  free, ≤1 ad per 3 rounds, ≥3 min apart, never at the stuck banner, never
+  when entitled). Session count persists in `ads.v1.json`. When entitled the
+  provider factory NEVER runs — zero ad-SDK init, test-pinned. AdMob+UMP
+  drop-in instructions live in the AdsService header TODO.
+- **Leaderboards — logic real, backend seam**
+  (`Monetization/LeaderboardService`): per-size boards, submit on win only,
+  offline queue in `leaderboards.v1.json` that flushes on sign-in and
+  survives relaunches. GPGS drop-in instructions in the file header TODO.
+- **Shop UI:** main menu (pitch + Buy/Restore + status line; flips to a
+  thank-you once owned). Pause overlay dims the locked theme options; picking
+  one unpurchased politely thuds.
+
+### Analytics & crash reporting (Tier 7)
+
+`Analytics/AnalyticsService` — method-per-event API; the schema table lives
+in that file's header (session_start, screen_view, game_start/end, hint_used,
+theme_selected, iap, ad_shown, sign_in). Backend is a seam:
+`DebugAnalyticsBackend` logs + records (used by tests), Firebase drops in via
+`IAnalyticsBackend` once google-services.json exists. Analytics can never
+crash gameplay (exception-swallowing is test-pinned).
+
+`Analytics/CrashReporting` — hooks `logMessageReceivedThreaded` (the
+MAIN-THREAD-only variant misses worker-thread crashes — verified by test)
+and keeps the last 20 unhandled exceptions in `crashes.log` for tester bug
+reports. Crashlytics later hooks itself; keep the local log regardless.
+
+### Release engineering (Tier 8)
+
+- **Builds:** menu `Ghode → Build Android AAB`, or headless:
+  `Unity.exe -batchmode -quit -projectPath <repo> -executeMethod
+  Ghode.EditorTools.BuildTools.BuildAndroidAab -logFile Builds/build.log`.
+  versionCode is auto (15-min UTC buckets since 2026-01-01 — monotonic,
+  collision-free, unforgettable); AAB lands in `Builds/` (git-ignored);
+  warns loudly when only debug-signed; symbols set to Public for Play
+  Console symbolication; batch mode exits 0/1 for CI.
+- **R8:** release minify ON with `Assets/Plugins/Android/proguard-user.txt`
+  (Billing/IAP keeps live; GPGS/AdMob/Firebase blocks ready to uncomment).
+  MUST be smoke-tested on the first installed build.
+- **Perf:** HUD clock repaints only when the displayed second changes.
+  Profiled mid-game: 115 frames → 6 frames with any PlayerLoop GC (the
+  1 Hz clock text, ~400 B each), zero on all other frames (QA P-02).
+
 ### Art pipeline
 
 Sprites live in `Assets/_Ghode/Art/Resources/Ghode/` and load by name through
@@ -234,15 +296,22 @@ tests), haptics service + setting, Wood/Ebony/Marble theme skeleton with the
 pause-menu picker, and the 48 dp touch-target audit (0 failures across all
 screens; cells excepted).
 
-Next (in plan order — see `ghode_tracker.html`):
+Tier 6 (monetization & online): REAL Unity IAP billing for `royal_stable`
+(editor fake-store purchase verified end-to-end: buy → entitlement file →
+instant Ebony unlock → ads dead → survives relaunch), entitlement cache,
+fully-tested ads policy with the AdMob seam, leaderboard service with the
+offline queue and the GPGS seam, shop UI + theme locking. Tier 7 (analytics
+& stability): full event schema wired through the controller (live-verified),
+threaded crash capture to crashes.log. Tier 8 (release engineering): AAB
+build automation with auto versionCode, R8 minify + keep rules, zero
+per-frame GC verified in the profiler.
 
-- **First device build** + closed-track upload (starts the 14-day tester
-  clock) — keystore first (`Tools/create-release-keystore.ps1`). Also the
-  first chance to FEEL the haptic patterns and check themes on OLED.
-- **Save spec:** confirm record field names against the web version
-  (`TODO(azzwhoo)` in `RecordsStore`) before anyone's records matter.
-- **Accessibility leftovers:** TalkBack/screen-reader pass + font ×1.3 pass
-  (both need a device).
-- Then Tiers 6–8: Play Games leaderboards, billing (lock Ebony/Marble
-  behind Royal Stable), AdMob+UMP, analytics/Crashlytics, release
-  engineering.
+**Development is now COMPLETE up to the account-gated work.** Every external
+service (billing/GPGS/AdMob/Firebase) is either fully integrated or one
+adapter file away behind a tested seam. `PLAY_CONSOLE_TODO.md` is the master
+checklist of the remaining human-with-credentials steps and exactly where
+each collected id plugs in.
+
+Also still open (dev-side, small): save-spec field-name check vs the web
+version (`TODO(azzwhoo)` in RecordsStore), TalkBack + font-scale passes
+(need a device), R8 smoke test on the first installed build.
