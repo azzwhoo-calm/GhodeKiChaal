@@ -143,6 +143,14 @@ namespace Ghode.UI
             button.targetGraphic = image; // uGUI tints this on press automatically
             if (onClick != null) button.onClick.AddListener(onClick);
 
+            // Every button gets a default preferred height. This matters: a
+            // plain color Image reports ZERO preferred size, so inside any
+            // stack with childControlHeight the face (and its TAP AREA)
+            // silently collapses to 0 px — only the overflowing label text
+            // kept such buttons visible. Callers override via Layout(...);
+            // buttons positioned by anchors ignore LayoutElement entirely.
+            Layout(button, preferredHeight: 96f);
+
             var text = CreateText("Label", image.transform, label, fontSize, textColor ?? Palette.Parchment);
             Fill((RectTransform)text.transform);
             return button;

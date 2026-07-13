@@ -65,8 +65,8 @@ Web → Unity mapping (keep behavior identical to the web version):
 | `state/gameReducer.js` | `BoardState` + `GameController` | same actions & phases |
 | `state/records.js`     | `Data/Records.cs`           | MAX_HISTORY = 12 |
 | `hooks/useTimer.js`    | `Game/GameTimer.cs`         | pause-safe |
-| `audio/AudioEngine.js` | `Audio/AudioManager.cs`     | baked clips (pending) |
-| `useLocalStorage.js`   | `Data/*Store.cs`            | PlayerPrefs JSON, versioned keys |
+| `audio/AudioEngine.js` | `Audio/AudioManager.cs`     | baked clips, hop round-robin, 20 ms mute ramp |
+| `useLocalStorage.js`   | `Data/SaveService + *Store.cs` | atomic JSON files in persistentDataPath |
 | `components/*.jsx`     | `UI/*` (code-built uGUI)    | one controller per screen |
 
 ### The board's four layers (BoardView)
@@ -76,6 +76,32 @@ frame sprite → cell grid (`CellView`, tiles + highlight shades + numbers) →
 0.55×cell + ground shadow, undo slide, reduced-motion snap). Cell centres are
 computed with plain math — never read back from the layout system — so
 animations are deterministic.
+
+### Saves (Tier 4)
+
+`SaveService` owns disk IO: `settings.v1.json` / `records.v1.json` in
+`persistentDataPath` (on this dev machine:
+`%USERPROFILE%\AppData\LocalLow\azzwhoo\GhodeKiChaal`). Three promises:
+atomic tmp→swap writes, corrupt files quarantined to `*.bad` + defaults, and a
+`schemaVersion` int gate (mismatch = quarantine until a migration exists).
+Legacy PlayerPrefs saves from pre-Tier-4 builds import once, then the key is
+deleted. Tests redirect everything via `SaveService.RootOverride`.
+
+**Backgrounding:** `GameController.OnApplicationPause(true)` silently
+auto-pauses a mid-game attempt (timer frozen; resume is the player's move) so
+background time costs zero seconds. `OnApplicationQuit` settles a pending
+stuck-loss. Accepted gap: an OS force-kill while stuck drops that one loss.
+
+### Audio (Tier 4)
+
+Clips live in `Assets/_Ghode/Art/Resources/Ghode/Audio/` — baked offline from
+the synth recipes in the tracker's Tech tab (6 hop variants + place / invalid /
+click / win / lose at −1 dBFS, plus a 12.6 s seamless ambience loop). The
+baker script is reproducible (fixed seed); regenerate or replace clips freely —
+`AudioManager` loads by name and silently skips anything missing. Hops
+round-robin through the six variants; mute is a 20 ms volume ramp. There is
+deliberately NO AudioMixer asset: mixers cannot be created from code, and two
+ramped sources deliver the same behavior at this scale.
 
 ### Art pipeline
 
@@ -108,9 +134,22 @@ EditMode suites live in `Assets/_Ghode/Tests/`:
   5×5 odd-parity impossibility theorem, undo.
 - `GameControllerFlowTests` — whole-game flows on a real controller with a
   fake clock: restart-resets-timer (the historic web bug), pause excludes
-  time, stuck→undo escape, walk-away losses, win recording, new-best badge.
-  Snapshots and restores the developer's real PlayerPrefs.
+  time, stuck→undo escape, walk-away losses, win recording, new-best badge,
+  backgrounding/quit lifecycle (invoked via reflection — SendMessage trips a
+  Unity assert in EditMode). Redirects saves to a temp folder.
+- `SaveServiceTests` — atomic writes, corrupt→quarantine, schema gate,
+  legacy PlayerPrefs import.
 - `GameTimerTests`, `RecordsTests`.
+
+**UI tap verification** (play mode, editor + MCP): dispatch clicks by
+raycasting at the button's screen point (`EventSystem.RaycastAll`) and
+requiring the hit to belong to the button before `ExecuteEvents` — this is
+what catches 0-px tap targets that direct `onClick` calls hide. Two gotchas:
+(1) a plain-color Image has ZERO preferred size, so buttons inside
+`childControlHeight` stacks collapse without a `LayoutElement` height —
+`UiFactory.CreateButton` now bakes in a 96 px default; (2) a screen activated
+in the SAME editor tick has no layout yet, so raycasts miss — let one frame
+pass (separate MCP command) before clicking anything on a fresh screen.
 
 In the editor: **Window → General → Test Runner → EditMode → Run All**.
 
@@ -153,15 +192,21 @@ keystore tooling. Tier 2 (logic parity): KnightLogic with full web tie-breaks,
 BoardState, timer, records(12) — all under test. Tier 3 (presentation): all
 screens + router, wooden art wired with fallbacks, horse spawn/hop/undo
 animations + shadow, path trail, difficulty highlight tiers, stuck banner,
-pause overlay (4 toggles incl. reduced motion), safe area.
+pause overlay (4 toggles incl. reduced motion), safe area. Tier 4 (services):
+SaveService (atomic files, quarantine, schema gate, legacy import),
+backgrounding auto-pause + quit-settles-stuck-loss, full baked SFX set with
+round-robin hops and 20 ms mute ramp. Every interactive control verified
+tappable via raycast-driven play-mode sweep (that sweep found and fixed the
+0-height button bug and the Instructions overflow that hid the Back button —
+the rules page now scrolls).
 
 Next (in plan order — see `ghode_tracker.html`):
 
-- **Backgrounding:** freeze/persist the timer in `OnApplicationPause` (QA A-02/A-03).
-- **SFX bake:** render the web synth recipes to WAV/OGG, assign in
-  `AudioManager` (recipes are in the tracker's Tech tab); mixer + 20 ms mute ramp.
 - **Save spec:** confirm record field names against the web version
-  (`TODO(azzwhoo)` in `RecordsStore`), then decide PlayerPrefs → files.
-- **First device build** + closed-track upload (starts the 14-day tester clock).
+  (`TODO(azzwhoo)` in `RecordsStore`) before anyone's records matter.
+- **First device build** + closed-track upload (starts the 14-day tester
+  clock) — keystore first (`Tools/create-release-keystore.ps1`).
+- **Audio polish:** A/B against the web version on speaker + earphones;
+  consider OGG re-encode of the ambience if AAB size ever matters.
 - Then: drag input, haptics, 7×7, themes, Play Games, billing, ads, analytics
   (Tiers 5–8 in the tracker).

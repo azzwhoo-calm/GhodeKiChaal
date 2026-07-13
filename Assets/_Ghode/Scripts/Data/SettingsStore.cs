@@ -1,7 +1,8 @@
 // SettingsStore.cs — saves and loads the player's Settings between sessions.
-// Uses Unity's PlayerPrefs (a tiny key→text cupboard the OS keeps for us)
-// with the settings turned into a JSON string. One key, versioned, so a
-// future format change can migrate cleanly.
+// Since Tier 4 the data lives in settings.v1.json inside persistentDataPath,
+// written atomically by SaveService (corrupt file → quarantined + defaults).
+// Saves made by older builds (which used PlayerPrefs) are imported once,
+// then the legacy key is deleted.
 
 using UnityEngine;
 
@@ -9,39 +10,61 @@ namespace Ghode.Data
 {
     /// <summary>
     /// Load and save <see cref="Settings"/>. If nothing was ever saved (or the
-    /// saved text is somehow broken), you simply get fresh default settings —
+    /// saved file is somehow broken), you simply get fresh default settings —
     /// the game never crashes over a bad save.
     /// </summary>
     public static class SettingsStore
     {
-        // Versioned key: if we ever change the shape of Settings, we bump to
-        // .v2 and write a migration instead of corrupting old installs.
-        const string Key = "ghodekichaal.settings.v1";
+        // The versioned file name IS the contract: a future format bump means
+        // a new file (settings.v2.json) plus a migration from this one.
+        const string FileName = "settings.v1.json";
+
+        // Pre-Tier-4 builds kept the same JSON under this PlayerPrefs key.
+        const string LegacyPrefsKey = "ghodekichaal.settings.v1";
 
         /// <summary>Read the saved settings, or defaults when there are none.</summary>
         public static Settings Load()
         {
-            if (!PlayerPrefs.HasKey(Key)) return new Settings();
+            var loaded = SaveService.LoadJson<Settings>(FileName,
+                s => s.schemaVersion == Settings.CurrentSchema);
+            if (loaded != null) return loaded;
 
-            try
-            {
-                // In plain words: turn the saved text back into a Settings object.
-                var loaded = JsonUtility.FromJson<Settings>(PlayerPrefs.GetString(Key));
-                return loaded ?? new Settings();
-            }
-            catch
-            {
-                // A corrupted save should never break the game — start fresh.
-                return new Settings();
-            }
+            // First run since the file-based saves landed? Rescue the old
+            // PlayerPrefs copy so nobody loses their choices to an update.
+            var imported = ImportLegacy();
+            return imported ?? new Settings();
         }
 
-        /// <summary>Write the settings to disk right now.</summary>
+        /// <summary>Write the settings to disk right now (atomically).</summary>
         public static void Save(Settings settings)
         {
             if (settings == null) return;
-            PlayerPrefs.SetString(Key, JsonUtility.ToJson(settings));
-            PlayerPrefs.Save(); // flush immediately — mobile apps can die any second
+            settings.schemaVersion = Settings.CurrentSchema;
+            SaveService.SaveJson(FileName, settings);
+        }
+
+        // One-time migration: parse the legacy PlayerPrefs JSON, persist it as
+        // the new file, and delete the key so this never runs again.
+        static Settings ImportLegacy()
+        {
+            if (!PlayerPrefs.HasKey(LegacyPrefsKey)) return null;
+
+            Settings imported = null;
+            try
+            {
+                imported = JsonUtility.FromJson<Settings>(PlayerPrefs.GetString(LegacyPrefsKey));
+            }
+            catch
+            {
+                // A broken legacy blob is not worth saving — fall through.
+            }
+
+            PlayerPrefs.DeleteKey(LegacyPrefsKey);
+            PlayerPrefs.Save();
+
+            if (imported == null) return null;
+            Save(imported);
+            return imported;
         }
     }
 }

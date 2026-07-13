@@ -15,6 +15,12 @@ namespace Ghode.Data
     [Serializable]
     public class Settings
     {
+        /// <summary>The save-file format this class writes. Bump + migrate on change.</summary>
+        public const int CurrentSchema = 1;
+
+        /// <summary>Format stamp carried inside the save file (see SaveService).</summary>
+        public int schemaVersion = CurrentSchema;
+
         /// <summary>Squares along one edge of the board. Default 5 (the 5×5 board).</summary>
         public int BoardSize = 5;
 

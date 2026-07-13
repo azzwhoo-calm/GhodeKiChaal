@@ -3,10 +3,10 @@
 // GameController (plus its AudioManager) on a temporary GameObject, swap the
 // timer's clock for a fake, and drive public actions exactly like buttons do.
 //
-// PlayerPrefs discipline: the controller saves through SettingsStore and
-// RecordsStore, which write real PlayerPrefs keys. SetUp snapshots those keys
-// and TearDown restores them, so running tests never touches a developer's
-// own settings or trophies.
+// Save discipline: the controller saves through SettingsStore/RecordsStore,
+// which write JSON files via SaveService. SetUp points SaveService at a
+// throwaway folder (and parks any legacy PlayerPrefs keys so the one-time
+// import cannot fire), so tests never touch a developer's real saves.
 
 using NUnit.Framework;
 using UnityEngine;
@@ -35,10 +35,18 @@ namespace Ghode.Tests
         string _savedSettings; // developer's real saves, restored in TearDown
         string _savedRecords;
 
+        string _saveRoot; // throwaway folder standing in for persistentDataPath
+
         [SetUp]
         public void SetUp()
         {
             // ---- Protect the developer's real saves --------------------------
+            _saveRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                "GhodeFlowTests_" + System.Guid.NewGuid().ToString("N"));
+            SaveService.RootOverride = _saveRoot;
+
+            // Park legacy PlayerPrefs too, or the stores' one-time import
+            // would pull a developer's real pre-Tier-4 saves into the tests.
             _savedSettings = PlayerPrefs.HasKey(SettingsKey) ? PlayerPrefs.GetString(SettingsKey) : null;
             _savedRecords = PlayerPrefs.HasKey(RecordsKey) ? PlayerPrefs.GetString(RecordsKey) : null;
             PlayerPrefs.DeleteKey(SettingsKey);
@@ -58,6 +66,9 @@ namespace Ghode.Tests
         public void TearDown()
         {
             Object.DestroyImmediate(_go);
+
+            SaveService.RootOverride = null;
+            try { System.IO.Directory.Delete(_saveRoot, recursive: true); } catch { /* never created */ }
 
             if (_savedSettings != null) PlayerPrefs.SetString(SettingsKey, _savedSettings);
             else PlayerPrefs.DeleteKey(SettingsKey);
@@ -281,6 +292,61 @@ namespace Ghode.Tests
             // because only strictly faster wins earn the badge.
             WinOneGame();
             Assert.IsFalse(_gc.LastGameWasNewBest, "Equal time must not claim the badge.");
+        }
+
+        // ------------------------------------------------------------------
+        // App lifecycle (backgrounding / quit). The engine calls these Unity
+        // messages itself in a player; in EditMode tests SendMessage trips
+        // Unity's ShouldRunBehaviour assertion, so we invoke the private
+        // handlers directly via reflection — same code path, no engine fuss.
+        // ------------------------------------------------------------------
+
+        void InvokeLifecycle(string method, params object[] args)
+        {
+            var mi = typeof(GameController).GetMethod(method,
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(mi, method + " must exist on GameController.");
+            mi.Invoke(_gc, args);
+        }
+
+        [Test]
+        public void Backgrounding_MidGame_PausesAndExcludesTime()
+        {
+            _gc.NewGame(5);
+            _gc.OnCellTapped(2, 2);
+            _now += 2.0;
+
+            InvokeLifecycle("OnApplicationPause", true); // home button pressed
+            _now += 600.0; // ten minutes on WhatsApp
+
+            Assert.IsTrue(_gc.IsPaused, "Backgrounding mid-game must raise the pause overlay.");
+            Assert.AreEqual(2000, _gc.Timer.ReadMs(), "Background time costs zero seconds.");
+
+            _gc.ResumeGame();
+            _now += 1.0;
+            Assert.AreEqual(3000, _gc.Timer.ReadMs(), "Exact resume after backgrounding.");
+        }
+
+        [Test]
+        public void Backgrounding_OnMenuOrBeforePlacement_DoesNothing()
+        {
+            InvokeLifecycle("OnApplicationPause", true); // backgrounded on the menu
+            Assert.IsFalse(_gc.IsPaused);
+
+            _gc.NewGame(5); // board waiting for placement, clock not running
+            InvokeLifecycle("OnApplicationPause", true);
+            Assert.IsFalse(_gc.IsPaused, "Nothing to freeze before the horse is placed.");
+        }
+
+        [Test]
+        public void Quitting_WhileStuck_RecordsThePendingLoss()
+        {
+            DriveIntoStuck();
+
+            InvokeLifecycle("OnApplicationQuit"); // app shutting down for real
+
+            Assert.AreEqual(1, _gc.Records.recent.Count, "Quitting while stuck settles the loss.");
+            Assert.IsFalse(_gc.Records.recent[0].won);
         }
 
         // ------------------------------------------------------------------

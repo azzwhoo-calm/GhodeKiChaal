@@ -257,10 +257,17 @@ namespace Ghode.Game
         /// <summary>Freeze the game and show the pause overlay.</summary>
         public void PauseGame()
         {
+            PauseGame(playSound: true);
+        }
+
+        // The silent flavor exists for backgrounding: pausing because the OS
+        // took the screen away should not click at the player.
+        void PauseGame(bool playSound)
+        {
             if (CurrentScreen != AppScreen.Playing || IsPaused) return;
             IsPaused = true;
             Timer.Pause();
-            Audio.Play(Sfx.Click);
+            if (playSound) Audio.Play(Sfx.Click);
             RaiseChanged();
         }
 
@@ -332,6 +339,38 @@ namespace Ghode.Game
         }
 
         // ------------------------------------------------------------------
+        // App lifecycle (Android home button, calls, task switching, kill)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// The OS is taking us to the background (home button, incoming call,
+        /// task switch). Freeze the attempt exactly where it is: the pause
+        /// overlay comes up (silently) and the clock stops, so ten minutes on
+        /// WhatsApp costs the player zero seconds. Settings and records are
+        /// already on disk — they save at every change.
+        /// </summary>
+        void OnApplicationPause(bool paused)
+        {
+            if (!paused) return; // resuming is the player's move (Resume button)
+            if (CurrentScreen == AppScreen.Playing && Board != null
+                && Board.Phase == Phase.Playing && Board.Current != null)
+            {
+                PauseGame(playSound: false);
+            }
+        }
+
+        /// <summary>
+        /// The app is shutting down for real. A stuck game the player never
+        /// resolved counts as a loss — settle it now while we still can.
+        /// (An OS force-kill can skip this callback; that one dropped loss is
+        /// an accepted gap — see the note in RecordPendingLossIfAny.)
+        /// </summary>
+        void OnApplicationQuit()
+        {
+            RecordPendingLossIfAny();
+        }
+
+        // ------------------------------------------------------------------
         // Internals
         // ------------------------------------------------------------------
 
@@ -348,14 +387,16 @@ namespace Ghode.Game
         }
 
         // A stuck game that the player walks away from counts as a loss.
+        // Walking away includes quitting the app (OnApplicationQuit above).
+        // Known accepted gap: an OS force-kill while stuck skips every
+        // callback, so that one loss is dropped — persisting a "pending loss"
+        // flag was judged not worth the save-file churn for a puzzle game.
         void RecordPendingLossIfAny()
         {
             if (!_pendingLoss || Board == null) return;
             _pendingLoss = false;
             Timer.Pause();
             RecordFinished(won: false);
-            // TODO(azzwhoo): a loss is silently dropped if the app is killed while
-            // stuck — decide whether to persist a "pending loss" flag in the save.
         }
 
         void RecordFinished(bool won)

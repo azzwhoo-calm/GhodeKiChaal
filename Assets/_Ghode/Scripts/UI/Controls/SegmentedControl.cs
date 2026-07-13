@@ -38,7 +38,12 @@ namespace Ghode.UI
                 int index = i; // capture a fresh copy for the click closure
                 var button = UiFactory.CreateButton("Option " + options[i], rt, options[i], 40,
                     () => control.HandleTap(index));
-                UiFactory.Layout(button, flexibleWidth: 1f); // equal widths
+                // Equal widths — and an explicit height, because the row's
+                // HStack CONTROLS child heights and a plain Image has no
+                // preferred size: without this every option collapses to
+                // 0 px tall and the board-size/difficulty buttons are
+                // invisible and untappable (same bug as ToggleControl).
+                UiFactory.Layout(button, preferredHeight: 96f, flexibleWidth: 1f);
                 control._faces[i] = button.GetComponent<Image>();
                 control._labels[i] = button.GetComponentInChildren<Text>();
             }

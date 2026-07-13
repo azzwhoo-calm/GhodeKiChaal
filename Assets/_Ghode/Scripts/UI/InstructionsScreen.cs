@@ -50,9 +50,36 @@ namespace Ghode.UI
             // TODO(azzwhoo): add the little knight-move diagram here — a mini 5×5
             // grid image with the L-shaped hop drawn on it (art pending).
 
-            var body = UiFactory.CreateText("Rules", root.transform, RulesText, 40,
+            // The rulebook is TALLER than most screens, so it lives inside a
+            // scroll view. Without this the text's preferred height blows the
+            // VStack past the screen bottom and shoves the Back button clean
+            // off the display — invisible AND untappable (found by the
+            // raycast-driven UI sweep, not by eye: the text still LOOKED fine).
+            var scrollArea = UiFactory.CreateRect("RulesScroll", root.transform);
+            UiFactory.Layout(scrollArea, flexibleHeight: 1f); // soak up the middle of the page
+
+            // An invisible graphic so the area catches drag gestures,
+            // and a mask so the text cannot paint outside its box.
+            var catcher = scrollArea.gameObject.AddComponent<Image>();
+            catcher.color = Color.clear;
+            scrollArea.gameObject.AddComponent<RectMask2D>();
+
+            var scroll = scrollArea.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.viewport = scrollArea;
+
+            var body = UiFactory.CreateText("Rules", scrollArea, RulesText, 40,
                 UiFactory.Palette.Parchment, TextAnchor.UpperLeft);
-            UiFactory.Layout(body, flexibleHeight: 1f); // soak up the middle of the page
+            var bodyRt = (RectTransform)body.transform;
+            bodyRt.anchorMin = new Vector2(0f, 1f); // stretch wide, hang from the top
+            bodyRt.anchorMax = new Vector2(1f, 1f);
+            bodyRt.pivot = new Vector2(0.5f, 1f);
+            bodyRt.offsetMin = new Vector2(0f, 0f);
+            bodyRt.offsetMax = new Vector2(0f, 0f);
+            body.gameObject.AddComponent<ContentSizeFitter>().verticalFit =
+                ContentSizeFitter.FitMode.PreferredSize; // grow to the full text height
+            scroll.content = bodyRt;
 
             var back = UiFactory.CreateButton("BackButton", root.transform, "Back", 46, gc.CloseInstructions);
             UiFactory.Layout(back, preferredHeight: 110f);

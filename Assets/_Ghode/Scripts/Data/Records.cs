@@ -46,6 +46,12 @@ namespace Ghode.Data
     [Serializable]
     public class Records
     {
+        /// <summary>The save-file format this class writes. Bump + migrate on change.</summary>
+        public const int CurrentSchema = 1;
+
+        /// <summary>Format stamp carried inside the save file (see SaveService).</summary>
+        public int schemaVersion = CurrentSchema;
+
         /// <summary>
         /// How many recent games we keep before the oldest falls off.
         /// 12 to match the web version's records.js (MAX_HISTORY = 12), so a
