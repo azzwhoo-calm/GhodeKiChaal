@@ -89,6 +89,94 @@ namespace Ghode.Tests
             Assert.IsNull(KnightLogic.WarnsdorffBest(board));
         }
 
+        [Test]
+        public void WarnsdorffBest_BreaksFullTieByLowestIndex()
+        {
+            // From the exact center of a fresh 5×5 every landing square has the
+            // SAME onward count (2) and the SAME distance from centre — so the
+            // final tie-break (lowest index, row-major) must decide: (0,1).
+            var board = new BoardState(5);
+            board.PlaceStart(2, 2);
+
+            var best = KnightLogic.WarnsdorffBest(board);
+
+            Assert.AreEqual((0, 1), best.Value,
+                "Full tie must fall through to the lowest row-major index.");
+        }
+
+        [Test]
+        public void WarnsdorffBest_ObeysAllThreeTieBreakRules_ThroughWholeGames()
+        {
+            // Property test across many real positions: play greedy games on
+            // every offered size and, at EVERY step, recompute the three rules
+            // independently. The chosen move must be the unique winner of
+            // (fewest onward) → (farthest from centre) → (lowest index).
+            foreach (int size in KnightLogic.BoardSizes)
+            {
+                var board = new BoardState(size);
+                board.PlaceStart(0, 0);
+
+                while (board.Phase == Phase.Playing)
+                {
+                    var pick = KnightLogic.WarnsdorffBest(board);
+                    if (pick == null) break;
+
+                    foreach (var other in KnightLogic.LegalMovesFrom(board))
+                    {
+                        if (other == pick.Value) continue;
+
+                        int pickOnward = KnightLogic.LegalMovesFrom(board, pick.Value.r, pick.Value.c).Count;
+                        int otherOnward = KnightLogic.LegalMovesFrom(board, other.r, other.c).Count;
+                        int pickDist = KnightLogic.CentreDistanceScore(size, pick.Value.r, pick.Value.c);
+                        int otherDist = KnightLogic.CentreDistanceScore(size, other.r, other.c);
+                        int pickIndex = pick.Value.r * size + pick.Value.c;
+                        int otherIndex = other.r * size + other.c;
+
+                        // In plain words: walk the rule chain; the first rule
+                        // where the two moves differ must favor the pick.
+                        bool pickWins =
+                            pickOnward != otherOnward ? pickOnward < otherOnward :
+                            pickDist != otherDist ? pickDist > otherDist :
+                            pickIndex < otherIndex;
+
+                        Assert.IsTrue(pickWins,
+                            $"On {size}×{size}, {pick} lost the tie-break chain to {other}.");
+                    }
+
+                    board.ApplyMove(pick.Value.r, pick.Value.c);
+                }
+            }
+        }
+
+        [Test]
+        public void FiveBoard_OddParityStartsCanNeverWin()
+        {
+            // Math fact (not just a heuristic): a knight alternates square
+            // colors every hop, and 5×5 has 13 squares of one color vs 12 of
+            // the other — so a full 25-square tour MUST start where (row+col)
+            // is even. From the 12 odd-parity squares no play can ever win;
+            // greedy play must always end Lost.
+            for (int r = 0; r < 5; r++)
+            {
+                for (int c = 0; c < 5; c++)
+                {
+                    if ((r + c) % 2 == 0) continue; // only the doomed starts
+
+                    var board = new BoardState(5);
+                    board.PlaceStart(r, c);
+                    while (board.Phase == Phase.Playing)
+                    {
+                        var best = KnightLogic.WarnsdorffBest(board);
+                        if (best == null) break;
+                        board.ApplyMove(best.Value.r, best.Value.c);
+                    }
+
+                    Assert.AreNotEqual(Phase.Won, board.Phase,
+                        $"({r},{c}) is an odd-parity start — winning from it is impossible.");
+                }
+            }
+        }
+
         // ------------------------------------------------------------------
         // Win detection
         // ------------------------------------------------------------------

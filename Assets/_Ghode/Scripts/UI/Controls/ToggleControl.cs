@@ -35,9 +35,13 @@ namespace Ghode.UI
             var caption = UiFactory.CreateText("Caption", rt, label, 42, UiFactory.Palette.Parchment, TextAnchor.MiddleLeft);
             UiFactory.Layout(caption, flexibleWidth: 2f);
 
-            // ...and the tappable switch takes the rest.
+            // ...and the tappable switch takes the rest. The explicit height
+            // matters: the row's HStack CONTROLS child heights, and a plain
+            // Image has no preferred size of its own — without this the
+            // switch face collapses to 0 px tall (only its overflowing text
+            // kept it findable at all).
             var button = UiFactory.CreateButton("Switch", rt, "Off", 40, control.HandleTap);
-            UiFactory.Layout(button, flexibleWidth: 1f);
+            UiFactory.Layout(button, preferredHeight: 80f, flexibleWidth: 1f);
             control._face = button.GetComponent<Image>();
             control._stateLabel = button.GetComponentInChildren<Text>();
 

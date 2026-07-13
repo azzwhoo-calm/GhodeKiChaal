@@ -3,6 +3,7 @@
 // never loses or double-counts a millisecond. Plain class, not a MonoBehaviour:
 // GameController owns one and asks it for the time whenever the HUD repaints.
 
+using System;
 using UnityEngine;
 
 namespace Ghode.Game
@@ -14,9 +15,20 @@ namespace Ghode.Game
     /// </summary>
     public class GameTimer
     {
+        /// <summary>
+        /// Where "now" comes from, in seconds. Defaults to Unity's real clock;
+        /// tests swap in a fake so they can fast-forward without sleeping.
+        /// </summary>
+        public Func<double> TimeSource { get; set; } = DefaultTimeSource;
+
         double _bankedMs;   // time collected during previous running stretches
         double _runStartAt; // real-clock moment the current stretch began
         bool _running;
+
+        static double DefaultTimeSource()
+        {
+            return Time.realtimeSinceStartupAsDouble;
+        }
 
         /// <summary>Is the stopwatch ticking right now?</summary>
         public bool IsRunning => _running;
@@ -32,7 +44,7 @@ namespace Ghode.Game
         public void Start()
         {
             if (_running) return;
-            _runStartAt = Time.realtimeSinceStartupAsDouble;
+            _runStartAt = TimeSource();
             _running = true;
         }
 
@@ -43,7 +55,7 @@ namespace Ghode.Game
         {
             if (!_running) return;
             // In plain words: pour the current stretch into the piggy bank.
-            _bankedMs += (Time.realtimeSinceStartupAsDouble - _runStartAt) * 1000.0;
+            _bankedMs += (TimeSource() - _runStartAt) * 1000.0;
             _running = false;
         }
 
@@ -51,7 +63,7 @@ namespace Ghode.Game
         public long ReadMs()
         {
             double live = _running
-                ? (Time.realtimeSinceStartupAsDouble - _runStartAt) * 1000.0
+                ? (TimeSource() - _runStartAt) * 1000.0
                 : 0.0;
             return (long)(_bankedMs + live);
         }

@@ -1,5 +1,5 @@
 ﻿<Solution>
-  <Project Path="Ghode.Runtime.csproj" />
   <Project Path="Ghode.Tests.csproj" />
+  <Project Path="Ghode.Runtime.csproj" />
   <Project Path="Ghode.Core.csproj" />
 </Solution>

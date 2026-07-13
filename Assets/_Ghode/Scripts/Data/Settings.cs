@@ -29,5 +29,11 @@ namespace Ghode.Data
 
         /// <summary>Background ambience loop on/off. Off by default.</summary>
         public bool Ambience = false;
+
+        /// <summary>
+        /// Accessibility: when on, the horse snaps between squares instead of
+        /// playing spawn/hop animations. Off by default.
+        /// </summary>
+        public bool ReducedMotion = false;
     }
 }

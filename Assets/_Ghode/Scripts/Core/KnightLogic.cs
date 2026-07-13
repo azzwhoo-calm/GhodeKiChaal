@@ -83,6 +83,9 @@ namespace Ghode.Core
         /// The smartest next hop, using Warnsdorff's rule: of all the legal hops,
         /// pick the one whose landing square has the FEWEST onward hops after it.
         /// (Visit the cramped corners early, before they become unreachable.)
+        /// Ties break exactly like the web version, in this order:
+        /// farther from the board's centre first, then lowest square index —
+        /// so the hint is deterministic and both versions always agree.
         /// Returns null when there is no legal hop at all.
         /// </summary>
         public static (int r, int c)? WarnsdorffBest(BoardState board)
@@ -90,8 +93,10 @@ namespace Ghode.Core
             var options = LegalMovesFrom(board);
             if (options.Count == 0) return null;
 
-            (int r, int c) best = options[0];
+            (int r, int c) best = default;
             int bestOnward = int.MaxValue;
+            int bestCentreDist = -1;
+            int bestIndex = int.MaxValue;
 
             foreach (var move in options)
             {
@@ -100,15 +105,46 @@ namespace Ghode.Core
                 // (The square the horse currently stands on is already stamped
                 // visited in `board`, so it is never counted as an onward hop.)
                 int onward = LegalMovesFrom(board, move.r, move.c).Count;
+                int centreDist = CentreDistanceScore(board.Size, move.r, move.c);
+                int index = move.r * board.Size + move.c;
 
-                if (onward < bestOnward)
+                bool wins;
+                if (onward != bestOnward)
                 {
-                    bestOnward = onward;
-                    best = move;
+                    wins = onward < bestOnward;          // rule 1: fewest onward hops
                 }
-                // Ties keep the earlier option — deterministic, which tests rely on.
+                else if (centreDist != bestCentreDist)
+                {
+                    wins = centreDist > bestCentreDist;  // rule 2: farther from centre
+                }
+                else
+                {
+                    wins = index < bestIndex;            // rule 3: lowest index
+                }
+
+                if (wins)
+                {
+                    best = move;
+                    bestOnward = onward;
+                    bestCentreDist = centreDist;
+                    bestIndex = index;
+                }
             }
             return best;
+        }
+
+        /// <summary>
+        /// How far square (r, c) sits from the board's centre, as a comparable
+        /// whole number (squared distance × 4, so a 6×6 board's half-square
+        /// centre never forces floating point). Bigger = farther out.
+        /// </summary>
+        public static int CentreDistanceScore(int size, int r, int c)
+        {
+            // In plain words: measure from the true centre (size-1)/2 in
+            // half-square units: (2r - (size-1))² + (2c - (size-1))².
+            int dr = 2 * r - (size - 1);
+            int dc = 2 * c - (size - 1);
+            return dr * dr + dc * dc;
         }
 
         /// <summary>Can the horse still hop anywhere at all?</summary>

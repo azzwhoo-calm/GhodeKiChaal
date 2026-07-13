@@ -323,6 +323,14 @@ namespace Ghode.Game
             RaiseChanged();
         }
 
+        /// <summary>Accessibility: snap the horse instead of animating hops.</summary>
+        public void SetReducedMotion(bool on)
+        {
+            Settings.ReducedMotion = on;
+            SettingsStore.Save(Settings);
+            RaiseChanged();
+        }
+
         // ------------------------------------------------------------------
         // Internals
         // ------------------------------------------------------------------

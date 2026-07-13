@@ -46,8 +46,12 @@ namespace Ghode.Data
     [Serializable]
     public class Records
     {
-        /// <summary>How many recent games we keep before the oldest falls off.</summary>
-        public const int MaxRecent = 10;
+        /// <summary>
+        /// How many recent games we keep before the oldest falls off.
+        /// 12 to match the web version's records.js (MAX_HISTORY = 12), so a
+        /// future save import/export lines up one-to-one.
+        /// </summary>
+        public const int MaxRecent = 12;
 
         /// <summary>Best winning time per board size (one entry per size, wins only).</summary>
         public List<BestTime> bestTimes = new List<BestTime>();

@@ -20,6 +20,7 @@ namespace Ghode.UI
         ToggleControl _soundToggle;
         ToggleControl _hintsToggle;
         ToggleControl _ambienceToggle;
+        ToggleControl _reducedMotionToggle;
 
         /// <summary>Create the (initially hidden) overlay over the game screen.</summary>
         public static PauseOverlay Build(RectTransform parent, GameController gc)
@@ -37,7 +38,7 @@ namespace Ghode.UI
             panelRt.anchorMin = new Vector2(0.5f, 0.5f);
             panelRt.anchorMax = new Vector2(0.5f, 0.5f);
             panelRt.pivot = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(860f, 1100f);
+            panelRt.sizeDelta = new Vector2(860f, 1220f); // fits the four setting rows
             UiFactory.VStack(panelRt, 18f, new RectOffset(40, 40, 40, 40));
 
             var title = UiFactory.CreateText("Title", panelRt, "Paused", 64, UiFactory.Palette.Accent,
@@ -64,6 +65,7 @@ namespace Ghode.UI
             overlay._soundToggle = ToggleControl.Build(panelRt, "SoundToggle", "Sound", gc.SetSound);
             overlay._hintsToggle = ToggleControl.Build(panelRt, "HintsToggle", "Hints", gc.SetHints);
             overlay._ambienceToggle = ToggleControl.Build(panelRt, "AmbienceToggle", "Ambience", gc.SetAmbience);
+            overlay._reducedMotionToggle = ToggleControl.Build(panelRt, "ReducedMotionToggle", "Reduced motion", gc.SetReducedMotion);
 
             UiFactory.Spacer(panelRt, 1f);
 
@@ -84,6 +86,7 @@ namespace Ghode.UI
             _soundToggle.SetValue(_gc.Settings.Sound);
             _hintsToggle.SetValue(_gc.Settings.Hints);
             _ambienceToggle.SetValue(_gc.Settings.Ambience);
+            _reducedMotionToggle.SetValue(_gc.Settings.ReducedMotion);
         }
     }
 }

@@ -45,7 +45,16 @@ namespace Ghode.Audio
 
         void Awake()
         {
-            // In plain words: build our two speakers the moment we exist.
+            EnsureSources();
+        }
+
+        // In plain words: build our two speakers the first time anyone needs
+        // them. Lazy (not only in Awake) because EditMode tests drive this
+        // class on GameObjects whose Awake never runs.
+        void EnsureSources()
+        {
+            if (_sfxSource != null) return;
+
             _sfxSource = gameObject.AddComponent<AudioSource>();
             _sfxSource.playOnAwake = false;
 
@@ -63,12 +72,14 @@ namespace Ghode.Audio
             var clip = ClipFor(sfx);
             if (clip == null) return; // graceful no-op until real SFX are assigned
 
+            EnsureSources();
             _sfxSource.PlayOneShot(clip);
         }
 
         /// <summary>Master mute for everything, driven by the Sound setting.</summary>
         public void SetMuted(bool muted)
         {
+            EnsureSources();
             _muted = muted;
             _ambienceSource.mute = muted;
         }
@@ -76,6 +87,7 @@ namespace Ghode.Audio
         /// <summary>Start or stop the background ambience loop.</summary>
         public void SetAmbience(bool on)
         {
+            EnsureSources();
             _ambienceWanted = on;
 
             if (on && ambienceClip != null && !_ambienceSource.isPlaying)

@@ -65,6 +65,11 @@ sysinfo.txt
 *.unitypackage.meta
 *.app
 
+# Signing keys — NEVER commit a keystore or its passwords.
+# Create yours with Tools/create-release-keystore.ps1 (see DEVELOPMENT.md).
+*.keystore
+*.jks
+
 # Crashlytics generated file
 crashlytics-build.properties
 
