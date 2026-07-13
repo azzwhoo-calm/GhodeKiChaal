@@ -25,7 +25,7 @@ namespace Ghode.UI
         public static SegmentedControl Build(RectTransform parent, string name, string[] options, Action<int> onSelect)
         {
             var rt = UiFactory.CreateRect(name, parent);
-            UiFactory.Layout(rt, preferredHeight: 110f);
+            UiFactory.Layout(rt, preferredHeight: 140f); // room for 48 dp options
             UiFactory.HStack(rt, 12f, new RectOffset(0, 0, 0, 0));
 
             var control = rt.gameObject.AddComponent<SegmentedControl>();
@@ -43,7 +43,8 @@ namespace Ghode.UI
                 // preferred size: without this every option collapses to
                 // 0 px tall and the board-size/difficulty buttons are
                 // invisible and untappable (same bug as ToggleControl).
-                UiFactory.Layout(button, preferredHeight: 96f, flexibleWidth: 1f);
+                // 132 ref-px ≈ the 48 dp touch-target minimum.
+                UiFactory.Layout(button, preferredHeight: 132f, flexibleWidth: 1f);
                 control._faces[i] = button.GetComponent<Image>();
                 control._labels[i] = button.GetComponentInChildren<Text>();
             }

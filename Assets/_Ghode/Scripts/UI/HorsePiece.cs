@@ -33,10 +33,16 @@ namespace Ghode.UI
 
         float _cell;          // current cell size in reference pixels
         Vector2 _restPos;     // where the horse logically stands right now
+        Vector2 _dragGround;  // where the finger is holding the piece right now
+        Color _tint = Color.white; // theme tint (alpha stays animation-owned)
+        bool _dragging;
         Coroutine _anim;
 
         /// <summary>False when the horse art is missing — the piece stays hidden.</summary>
         public bool HasArt => _piece != null && _piece.sprite != null;
+
+        /// <summary>Is the player holding the piece with their finger right now?</summary>
+        public bool IsDragging => _dragging;
 
         /// <summary>Create the shadow + horse images under the given board layer.</summary>
         public static HorsePiece Build(RectTransform layer)
@@ -77,6 +83,63 @@ namespace Ghode.UI
             _cell = cellSize;
             _pieceRt.sizeDelta = new Vector2(cellSize * 0.98f, cellSize * 0.98f);
             _shadowRt.sizeDelta = new Vector2(cellSize * 0.62f, cellSize * 0.24f);
+        }
+
+        /// <summary>The active theme's tint over the horse art (alpha ignored).</summary>
+        public void SetTint(Color tint)
+        {
+            _tint = tint;
+            var c = _piece.color;
+            _piece.color = new Color(tint.r, tint.g, tint.b, c.a);
+        }
+
+        // ------------------------------------------------------------------
+        // Drag: the player picks the horse up and carries it. BoardView owns
+        // the rules (where drags may start, whether the drop is legal); this
+        // is only the picked-up look and the two ways a drag can end.
+        // ------------------------------------------------------------------
+
+        /// <summary>The finger closed around the piece: lift it slightly.</summary>
+        public void BeginDragVisual()
+        {
+            if (!HasArt) return;
+            StopAnim();
+            _dragging = true;
+            _dragGround = _restPos;
+            _piece.enabled = true;
+            _shadow.enabled = true;
+            DragTo(_restPos);
+        }
+
+        /// <summary>Carry the lifted piece to this board point (shadow stays grounded).</summary>
+        public void DragTo(Vector2 ground)
+        {
+            if (!_dragging) return;
+            _dragGround = ground;
+            PlacePiece(ground, _cell * 0.22f, 1.06f, 1f);
+            PlaceShadow(ground, 0.8f);
+        }
+
+        /// <summary>The drop was legal: settle on the new square instantly.</summary>
+        public void EndDragSettle(Vector2 pos)
+        {
+            _dragging = false;
+            SnapTo(pos);
+        }
+
+        /// <summary>The drop was NOT legal: glide back to where the horse stood.</summary>
+        public void EndDragSnapBack(bool instant)
+        {
+            if (!_dragging) { return; }
+            _dragging = false;
+            if (instant || !isActiveAndEnabled)
+            {
+                SnapTo(_restPos);
+                return;
+            }
+            Vector2 from = _dragGround;
+            StopAnim();
+            _anim = StartCoroutine(SlideRoutine(from, _restPos));
         }
 
         /// <summary>Vanish immediately (empty board, menu, missing art).</summary>
@@ -205,8 +268,7 @@ namespace Ghode.UI
         {
             _pieceRt.anchoredPosition = new Vector2(ground.x, ground.y + _cell * 0.06f + height);
             _pieceRt.localScale = new Vector3(scale, scale, 1f);
-            var c = _piece.color;
-            _piece.color = new Color(c.r, c.g, c.b, alpha);
+            _piece.color = new Color(_tint.r, _tint.g, _tint.b, alpha); // theme rgb, animated alpha
 
             if (height <= 0.01f) PlaceShadow(ground, 1f);
         }

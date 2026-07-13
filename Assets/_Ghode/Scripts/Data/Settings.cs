@@ -41,5 +41,11 @@ namespace Ghode.Data
         /// playing spawn/hop animations. Off by default.
         /// </summary>
         public bool ReducedMotion = false;
+
+        /// <summary>Vibration feedback on hops, rejects, wins and losses.</summary>
+        public bool Haptics = true;
+
+        /// <summary>The board's costume (see <see cref="Core.Theme"/>).</summary>
+        public Theme Theme = Theme.Wood;
     }
 }

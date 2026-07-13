@@ -55,15 +55,15 @@ namespace Ghode.UI
 
             var playAgain = UiFactory.CreateButton("PlayAgainButton", root.transform, "Play Again", 50,
                 gc.Restart, UiFactory.Palette.Accent, UiFactory.Palette.Walnut);
-            UiFactory.Layout(playAgain, preferredHeight: 130f);
+            UiFactory.Layout(playAgain, preferredHeight: 140f);
 
             // Loss-only escape hatch: hop back one move and return to the board.
             screen._undoButton = UiFactory.CreateButton("UndoKeepTryingButton", root.transform,
                 "Undo & keep trying", 44, gc.Undo);
-            UiFactory.Layout(screen._undoButton, preferredHeight: 110f);
+            UiFactory.Layout(screen._undoButton, preferredHeight: 132f);
 
             var menu = UiFactory.CreateButton("MenuButton", root.transform, "Menu", 44, gc.GoMenu);
-            UiFactory.Layout(menu, preferredHeight: 110f);
+            UiFactory.Layout(menu, preferredHeight: 132f);
 
             UiFactory.Spacer(root.rectTransform, 1f);
 

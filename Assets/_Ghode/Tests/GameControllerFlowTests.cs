@@ -402,25 +402,67 @@ namespace Ghode.Tests
         [Test]
         public void SettingsPersistAcrossControllers()
         {
-            _gc.SetBoardSize(8);
+            _gc.SetBoardSize(7);
             _gc.SetDifficulty(Difficulty.Master);
             _gc.SetSound(false);
+            _gc.SetHaptics(false);
+            _gc.SetTheme(Theme.Ebony);
 
-            // A "fresh launch": a brand-new controller loading the same prefs.
+            // A "fresh launch": a brand-new controller loading the same saves.
             var go2 = new GameObject("SecondLaunch");
             try
             {
                 var gc2 = go2.AddComponent<GameController>();
                 gc2.Init(go2.AddComponent<AudioManager>());
 
-                Assert.AreEqual(8, gc2.Settings.BoardSize);
+                Assert.AreEqual(7, gc2.Settings.BoardSize);
                 Assert.AreEqual(Difficulty.Master, gc2.Settings.Difficulty);
                 Assert.IsFalse(gc2.Settings.Sound);
+                Assert.IsFalse(gc2.Settings.Haptics);
+                Assert.AreEqual(Theme.Ebony, gc2.Settings.Theme);
             }
             finally
             {
                 Object.DestroyImmediate(go2);
             }
+        }
+
+        [Test]
+        public void SevenBoard_PlaysEndToEnd()
+        {
+            // The new 7×7 option must be a real, winnable game mode, not just
+            // a menu label: rehearse a greedy tour and replay it through the
+            // controller's public tap API.
+            var rehearsal = FindWinningTour(7);
+            Assert.IsNotNull(rehearsal, "7×7 must be greedy-winnable from some start.");
+
+            _gc.NewGame(7);
+            foreach (var (r, c) in rehearsal) _gc.OnCellTapped(r, c);
+
+            Assert.AreEqual(Phase.Won, _gc.Board.Phase);
+            Assert.AreEqual(49, _gc.Board.VisitedCount);
+            Assert.AreEqual(48, _gc.Records.recent[0].moves);
+        }
+
+        // Greedy-rehearses a winning tour on a pure BoardState, or null.
+        static System.Collections.Generic.IReadOnlyList<(int r, int c)> FindWinningTour(int size)
+        {
+            for (int r = 0; r < size; r++)
+            {
+                for (int c = 0; c < size; c++)
+                {
+                    var board = new BoardState(size);
+                    board.PlaceStart(r, c);
+                    while (board.Phase == Phase.Playing)
+                    {
+                        var best = KnightLogic.WarnsdorffBest(board);
+                        if (best == null) break;
+                        board.ApplyMove(best.Value.r, best.Value.c);
+                    }
+                    if (board.Phase == Phase.Won) return board.Path;
+                }
+            }
+            return null;
         }
     }
 }

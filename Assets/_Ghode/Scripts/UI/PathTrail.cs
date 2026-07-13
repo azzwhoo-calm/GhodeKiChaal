@@ -16,9 +16,8 @@ namespace Ghode.UI
     /// </summary>
     public class PathTrail : MonoBehaviour
     {
-        static readonly Color TrailColor = new Color(0xEA / 255f, 0xD9 / 255f, 0xB0 / 255f, 0.5f);
-
         readonly List<RectTransform> _segments = new List<RectTransform>();
+        readonly List<Image> _images = new List<Image>();
         RectTransform _layer;
 
         /// <summary>Attach a trail to the given (already positioned) board layer.</summary>
@@ -31,10 +30,11 @@ namespace Ghode.UI
 
         /// <summary>
         /// Redraw the ribbon through these centre points (anchored space,
-        /// y-down). One point or none = no ribbon. <paramref name="thickness"/>
-        /// scales with the cell so big boards get daintier lines.
+        /// y-down) in the given theme color. One point or none = no ribbon.
+        /// <paramref name="thickness"/> scales with the cell so big boards
+        /// get daintier lines.
         /// </summary>
-        public void Render(IReadOnlyList<Vector2> points, float thickness)
+        public void Render(IReadOnlyList<Vector2> points, float thickness, Color color)
         {
             int needed = Mathf.Max(0, points.Count - 1);
 
@@ -53,6 +53,7 @@ namespace Ghode.UI
                 // Slightly longer than the gap so joints overlap instead of cracking.
                 rt.sizeDelta = new Vector2(delta.magnitude + thickness * 0.5f, thickness);
                 rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+                _images[i].color = color;
             }
 
             // Park the leftovers (e.g. after an undo shortened the path).
@@ -73,10 +74,10 @@ namespace Ghode.UI
                 rt.pivot = new Vector2(0.5f, 0.5f);
 
                 var image = rt.gameObject.AddComponent<Image>();
-                image.color = TrailColor;
                 image.raycastTarget = false; // never eat a tap
 
                 _segments.Add(rt);
+                _images.Add(image);
             }
         }
     }

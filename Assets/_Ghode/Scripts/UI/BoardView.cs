@@ -5,13 +5,16 @@
 //   3. the PathTrail ribbon tracing every visited square in order
 //   4. the HorsePiece, which spawns, hops and slides between squares
 // On every StateChanged it re-reads the BoardState, repaints each square
-// (honoring the difficulty's highlight tier), redraws the trail, and works
-// out which animation the horse owes the player. Cell positions are computed
-// from plain math — never read back from the layout system — so animations
-// are deterministic and independent of layout timing.
+// (honoring the difficulty's highlight tier AND the active theme), redraws
+// the trail, and works out which animation the horse owes the player. Cell
+// positions are computed from plain math — never read back from the layout
+// system — so animations are deterministic and independent of layout timing.
+// It also owns DRAG input: pick the horse up from its square, carry it, and
+// drop it on a legal square to move (anywhere else glides it back).
 
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Ghode.Core;
 using Ghode.Game;
@@ -21,9 +24,10 @@ namespace Ghode.UI
     /// <summary>
     /// The visual board. Purely a mirror: it never changes game state itself,
     /// it only repaints from <see cref="GameController.Board"/> and forwards
-    /// cell taps to <see cref="GameController.OnCellTapped"/>.
+    /// cell taps (and drag-drops) to <see cref="GameController.OnCellTapped"/>.
+    /// Drag events reach it by bubbling up from the tapped cell.
     /// </summary>
-    public class BoardView : MonoBehaviour
+    public class BoardView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         // All in reference pixels (the canvas designs at 1080×1920).
         const float BoardPx = 1000f;   // outer size of the wooden frame
@@ -32,12 +36,14 @@ namespace Ghode.UI
         const float Gap = 8f;           // gap between squares
 
         GameController _gc;
+        Image _frameImage;
         GridLayoutGroup _grid;
         RectTransform _gridHolder;
         CellView[] _cells;  // row-major: index = row * size + col
         int _builtSize;     // which N the current grid was built for (0 = none)
         float _cellSize;    // side of one square, in reference pixels
         float _pad;         // frame border actually in use (art vs flat)
+        bool _dragActive;   // a horse-drag gesture is in progress
 
         PathTrail _trail;
         HorsePiece _horse;
@@ -64,12 +70,13 @@ namespace Ghode.UI
 
             var view = frame.gameObject.AddComponent<BoardView>();
             view._gc = gc;
+            view._frameImage = frame;
 
-            // Wear the wooden picture-frame art when it exists.
+            // Wear the wooden picture-frame art when it exists (every theme
+            // tints the same sprite until per-theme frame art lands).
             if (GhodeArt.Frame != null)
             {
                 frame.sprite = GhodeArt.Frame;
-                frame.color = Color.white;
                 view._pad = ArtFramePad;
             }
             else
@@ -129,6 +136,14 @@ namespace Ghode.UI
             if (board == null) return; // no game yet — nothing to draw
 
             EnsureGrid(board.Size);
+
+            // The frame and horse wear the active theme (cells and the trail
+            // pick their theme colors up below, during their own repaint).
+            var themeColors = GhodeTheme.Colors;
+            _frameImage.color = _frameImage.sprite != null
+                ? themeColors.FrameTint
+                : UiFactory.Palette.Walnut * themeColors.FrameTint;
+            _horse.SetTint(themeColors.HorseTint);
 
             // ---- Work out which squares get highlights this frame ----------
             bool playing = board.Phase == Phase.Playing;
@@ -215,7 +230,7 @@ namespace Ghode.UI
             {
                 _trailPoints.Add(CellCenter(r, c));
             }
-            _trail.Render(_trailPoints, _cellSize * 0.10f);
+            _trail.Render(_trailPoints, _cellSize * 0.10f, GhodeTheme.Colors.Trail);
         }
 
         // Compare this repaint's board against the previous one and choose the
@@ -243,7 +258,13 @@ namespace Ghode.UI
                 if (sameBoard && count == _animCount && Equals(current, _animCurrent))
                 {
                     // Same square, same move count: a settings/hint repaint.
-                    // Leave the horse alone — it may be mid-hop right now.
+                    // Leave the horse alone — it may be mid-hop (or mid-drag).
+                }
+                else if (_horse.IsDragging && count == _animCount + 1)
+                {
+                    // The player CARRIED the horse here — it is already at the
+                    // target under their finger, so settle, don't re-fly.
+                    _horse.EndDragSettle(pos);
                 }
                 else if (snapOnly || !sameBoard)
                 {
@@ -267,6 +288,89 @@ namespace Ghode.UI
             _animBoard = board;
             _animCount = count;
             _animCurrent = current;
+        }
+
+        // ------------------------------------------------------------------
+        // Drag input (M1). uGUI raises these on us because we are the first
+        // drag handler above the tapped cell. Tap input is untouched: below
+        // the drag threshold (12 dp, set by GameBootstrap) the cell's Button
+        // click fires as always; above it, uGUI cancels the click itself.
+        // ------------------------------------------------------------------
+
+        /// <summary>A drag gesture crossed the threshold. Pick the horse up —
+        /// but only if the finger started ON the horse's own square.</summary>
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            _dragActive = false;
+            var board = _gc.Board;
+            if (board == null || board.Phase != Phase.Playing || _gc.IsPaused) return;
+            if (!_horse.HasArt) return; // nothing to carry without the art
+
+            var pressed = CellAt(eventData.pressPosition, eventData.pressEventCamera);
+            if (pressed == null || !Equals(pressed, board.Current)) return;
+
+            _dragActive = true;
+            _horse.BeginDragVisual();
+        }
+
+        /// <summary>The finger moved: carry the horse (clamped to the board).</summary>
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (!_dragActive) return;
+
+            Vector2 point = LocalPoint(eventData.position, eventData.pressEventCamera);
+            float side = BoardPx - _pad * 2f;
+            point.x = Mathf.Clamp(point.x, 0f, side);
+            point.y = Mathf.Clamp(point.y, -side, 0f);
+            _horse.DragTo(point);
+        }
+
+        /// <summary>The finger lifted: a legal square moves there, anything
+        /// else (illegal square, a gap, off the board) glides the horse back.</summary>
+        public void OnEndDrag(PointerEventData eventData)
+        {
+            if (!_dragActive) return;
+            _dragActive = false;
+
+            var cell = CellAt(eventData.position, eventData.pressEventCamera);
+            if (cell != null)
+            {
+                // The controller decides legality: a legal drop applies the
+                // move (UpdateHorse settles the piece), an illegal one thuds.
+                _gc.OnCellTapped(cell.Value.r, cell.Value.c);
+            }
+
+            // Still dragging = the move did NOT happen. Snap back home.
+            if (_horse.IsDragging)
+            {
+                _horse.EndDragSnapBack(instant: _gc.Settings.ReducedMotion);
+            }
+        }
+
+        // Screen point → our board-layer space (origin at the grid's top-left
+        // corner, x right, y NEGATIVE going down — same space as CellCenter).
+        Vector2 LocalPoint(Vector2 screenPos, Camera camera)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                _gridHolder, screenPos, camera, out Vector2 local);
+            var rect = _gridHolder.rect;
+            // Local coords have their origin at the holder's pivot (centre);
+            // shift to the top-left corner and flip into y-down.
+            return new Vector2(local.x - rect.xMin, -(rect.yMax - local.y));
+        }
+
+        // Which square is under this screen point? Null when outside the grid.
+        (int r, int c)? CellAt(Vector2 screenPos, Camera camera)
+        {
+            if (_builtSize == 0) return null;
+
+            Vector2 point = LocalPoint(screenPos, camera);
+            float step = _cellSize + Gap;
+            int col = Mathf.FloorToInt(point.x / step);
+            int row = Mathf.FloorToInt(-point.y / step);
+
+            if (row < 0 || row >= _builtSize || col < 0 || col >= _builtSize) return null;
+            return (row, col);
         }
 
         // Build (or rebuild) the grid of squares when the board size changes.

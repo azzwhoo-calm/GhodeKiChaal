@@ -77,50 +77,56 @@ namespace Ghode.UI
         }
 
         /// <summary>
-        /// Paint this square. <paramref name="darkSquare"/> is the chessboard
-        /// parity; <paramref name="moveNumber"/> is 0 for unvisited squares.
+        /// Paint this square in the ACTIVE theme's colors.
+        /// <paramref name="darkSquare"/> is the chessboard parity;
+        /// <paramref name="moveNumber"/> is 0 for unvisited squares.
         /// </summary>
         public void Render(bool darkSquare, CellLook look, int moveNumber)
         {
-            var tile = darkSquare ? GhodeArt.TileDark : GhodeArt.TileLight;
+            var theme = GhodeTheme.Colors;
+
+            // Only the Wood theme wears the tile art (for now — see GhodeTheme).
+            var tile = theme.UseWoodTiles
+                ? (darkSquare ? GhodeArt.TileDark : GhodeArt.TileLight)
+                : null;
 
             string label = "";
-            Color labelColor = UiFactory.Palette.Parchment;
+            Color labelColor = theme.LabelDefault;
             FontStyle labelStyle = FontStyle.Normal;
-            Color shade = Color.clear;      // used when the tile sprite exists
+            Color shade = Color.clear;      // used when a tile sprite exists
             Color flatFace;                 // used when it does not
 
             // Start from the plain checkerboard color, then let the look override.
-            flatFace = darkSquare ? UiFactory.Palette.CellDark : UiFactory.Palette.CellLight;
+            flatFace = darkSquare ? theme.CellDark : theme.CellLight;
 
             switch (look)
             {
                 case CellLook.Legal:
-                    shade = WithAlpha(UiFactory.Palette.CellLegal, 0.55f);
-                    flatFace = UiFactory.Palette.CellLegal;
+                    shade = WithAlpha(theme.CellLegal, 0.55f);
+                    flatFace = theme.CellLegal;
                     label = "•"; // a small dot marks "you may hop here"
-                    labelColor = UiFactory.Palette.Walnut;
+                    labelColor = theme.LabelOnAction;
                     break;
 
                 case CellLook.Best:
-                    shade = WithAlpha(UiFactory.Palette.CellBest, 0.8f);
-                    flatFace = UiFactory.Palette.CellBest;
+                    shade = WithAlpha(theme.CellBest, 0.8f);
+                    flatFace = theme.CellBest;
                     label = "•"; // brighter square + dot = the smart hop
-                    labelColor = UiFactory.Palette.Walnut;
+                    labelColor = theme.LabelOnAction;
                     labelStyle = FontStyle.Bold;
                     break;
 
                 case CellLook.Visited:
-                    shade = WithAlpha(UiFactory.Palette.CellVisited, 0.55f);
-                    flatFace = UiFactory.Palette.CellVisited;
+                    shade = WithAlpha(theme.CellVisited, 0.55f);
+                    flatFace = theme.CellVisited;
                     label = moveNumber.ToString();
                     break;
 
                 case CellLook.Current:
-                    shade = WithAlpha(UiFactory.Palette.CellCurrent, 0.55f);
-                    flatFace = UiFactory.Palette.CellCurrent;
+                    shade = WithAlpha(theme.CellCurrent, 0.55f);
+                    flatFace = theme.CellCurrent;
                     label = moveNumber.ToString();
-                    labelColor = UiFactory.Palette.Walnut;
+                    labelColor = theme.LabelOnAction;
                     labelStyle = FontStyle.Bold;
                     break;
 
@@ -128,7 +134,7 @@ namespace Ghode.UI
                     // In plain words: stuck — unreachable squares go grim, but
                     // stay visible so the player can retrace their trail.
                     shade = new Color(0.1f, 0.08f, 0.06f, 0.55f);
-                    flatFace = UiFactory.Palette.CellDead;
+                    flatFace = theme.CellDead;
                     break;
 
                     // CellLook.Empty keeps the bare tile and no label.
@@ -143,7 +149,7 @@ namespace Ghode.UI
             else
             {
                 _face.sprite = null;
-                _face.color = flatFace;    // classic flat-color fallback
+                _face.color = flatFace;    // flat theme color (Ebony/Marble/no art)
                 _shade.color = Color.clear;
             }
 

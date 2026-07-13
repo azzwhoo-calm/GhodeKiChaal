@@ -82,7 +82,7 @@ namespace Ghode.UI
             scroll.content = bodyRt;
 
             var back = UiFactory.CreateButton("BackButton", root.transform, "Back", 46, gc.CloseInstructions);
-            UiFactory.Layout(back, preferredHeight: 110f);
+            UiFactory.Layout(back, preferredHeight: 132f);
 
             return screen;
         }

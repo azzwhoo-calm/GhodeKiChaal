@@ -44,4 +44,16 @@ namespace Ghode.Core
         Knight,
         Master
     }
+
+    /// <summary>
+    /// The board's costume. Wood is the free default; Ebony and Marble will
+    /// unlock with the "Royal Stable" purchase once billing lands (until
+    /// then the picker in the pause menu shows all three for the testers).
+    /// </summary>
+    public enum Theme
+    {
+        Wood,
+        Ebony,
+        Marble
+    }
 }

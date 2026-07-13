@@ -179,6 +179,13 @@ namespace Ghode.Game
                 host.AddComponent<EventSystem>();
             }
 
+            // Drag starts after 12 dp of movement (the spec'd threshold):
+            // shorter gestures stay taps. dp → px via the device's dpi, with
+            // 160 (= 1 dp per px) as the fallback when dpi is unknown.
+            float dpi = UnityEngine.Screen.dpi > 0f ? UnityEngine.Screen.dpi : 160f;
+            host.GetComponent<EventSystem>().pixelDragThreshold =
+                Mathf.RoundToInt(12f * dpi / 160f);
+
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
             // This project uses the new Input System exclusively
             // (ProjectSettings → activeInputHandler = 1). Only an

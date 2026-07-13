@@ -149,31 +149,63 @@ namespace Ghode.Tests
         }
 
         [Test]
-        public void FiveBoard_OddParityStartsCanNeverWin()
+        public void OddBoards_OddParityStartsCanNeverWin()
         {
             // Math fact (not just a heuristic): a knight alternates square
-            // colors every hop, and 5×5 has 13 squares of one color vs 12 of
-            // the other — so a full 25-square tour MUST start where (row+col)
-            // is even. From the 12 odd-parity squares no play can ever win;
-            // greedy play must always end Lost.
-            for (int r = 0; r < 5; r++)
+            // colors every hop, and an ODD board (5×5, 7×7) has one more
+            // square of one color than the other — so a full tour MUST start
+            // where (row+col) is even. From every odd-parity square no play
+            // can ever win; greedy play must always end Lost.
+            foreach (int size in new[] { 5, 7 })
             {
-                for (int c = 0; c < 5; c++)
+                for (int r = 0; r < size; r++)
                 {
-                    if ((r + c) % 2 == 0) continue; // only the doomed starts
-
-                    var board = new BoardState(5);
-                    board.PlaceStart(r, c);
-                    while (board.Phase == Phase.Playing)
+                    for (int c = 0; c < size; c++)
                     {
-                        var best = KnightLogic.WarnsdorffBest(board);
-                        if (best == null) break;
-                        board.ApplyMove(best.Value.r, best.Value.c);
-                    }
+                        if ((r + c) % 2 == 0) continue; // only the doomed starts
 
-                    Assert.AreNotEqual(Phase.Won, board.Phase,
-                        $"({r},{c}) is an odd-parity start — winning from it is impossible.");
+                        var board = new BoardState(size);
+                        board.PlaceStart(r, c);
+                        while (board.Phase == Phase.Playing)
+                        {
+                            var best = KnightLogic.WarnsdorffBest(board);
+                            if (best == null) break;
+                            board.ApplyMove(best.Value.r, best.Value.c);
+                        }
+
+                        Assert.AreNotEqual(Phase.Won, board.Phase,
+                            $"({r},{c}) is an odd-parity start on {size}×{size} — winning from it is impossible.");
+                    }
                 }
+            }
+        }
+
+        [Test]
+        public void EveryOfferedSize_GreedyCompletesFromSomeStart()
+        {
+            // Every size in the menu must actually be WINNABLE by following
+            // the hint from at least one starting square — otherwise our own
+            // Apprentice mode would be advertising an impossible puzzle.
+            foreach (int size in KnightLogic.BoardSizes)
+            {
+                bool anyWin = false;
+                for (int r = 0; r < size && !anyWin; r++)
+                {
+                    for (int c = 0; c < size && !anyWin; c++)
+                    {
+                        var board = new BoardState(size);
+                        board.PlaceStart(r, c);
+                        while (board.Phase == Phase.Playing)
+                        {
+                            var best = KnightLogic.WarnsdorffBest(board);
+                            if (best == null) break;
+                            board.ApplyMove(best.Value.r, best.Value.c);
+                        }
+                        anyWin = board.Phase == Phase.Won;
+                    }
+                }
+                Assert.IsTrue(anyWin,
+                    $"Greedy Warnsdorff must complete a {size}×{size} tour from at least one start.");
             }
         }
 

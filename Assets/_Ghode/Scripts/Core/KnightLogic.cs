@@ -14,8 +14,11 @@ namespace Ghode.Core
     /// </summary>
     public static class KnightLogic
     {
-        /// <summary>The board sizes the game offers: 5×5, 6×6 and 8×8.</summary>
-        public static readonly int[] BoardSizes = { 5, 6, 8 };
+        /// <summary>
+        /// The board sizes the game offers: 5×5, 6×6, 7×7 and 8×8.
+        /// (4×4 is deliberately absent — no full knight's tour exists on it.)
+        /// </summary>
+        public static readonly int[] BoardSizes = { 5, 6, 7, 8 };
 
         // In plain words: a knight hops in an L shape — two squares one way,
         // then one square sideways. These two arrays list all 8 possible Ls.

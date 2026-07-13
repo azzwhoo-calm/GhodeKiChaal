@@ -34,7 +34,7 @@ namespace Ghode.UI
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
-            rt.offsetMin = new Vector2(20f, -300f); // 300 ref-px tall, 20 px side margins
+            rt.offsetMin = new Vector2(20f, -320f); // 320 ref-px tall, 20 px side margins
             rt.offsetMax = new Vector2(-20f, 0f);
 
             var hud = rt.gameObject.AddComponent<Hud>();
@@ -53,9 +53,9 @@ namespace Ghode.UI
             hud._timerText = StatText(stats, "Timer");
             hud._hintsText = StatText(stats, "Hints");
 
-            // ---- Row 2: the buttons ----------------------------------------
+            // ---- Row 2: the buttons (48 dp targets → 132+ ref-px tall) ------
             var buttons = UiFactory.CreateRect("Buttons", rt);
-            UiFactory.Layout(buttons, preferredHeight: 120f);
+            UiFactory.Layout(buttons, preferredHeight: 140f);
             UiFactory.HStack(buttons, 14f, new RectOffset(0, 0, 0, 0));
 
             hud._hintButton = UiFactory.CreateButton("HintButton", buttons, "Hint", 40, gc.UseHint);

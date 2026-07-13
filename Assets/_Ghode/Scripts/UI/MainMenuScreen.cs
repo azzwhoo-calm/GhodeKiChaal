@@ -66,7 +66,7 @@ namespace Ghode.UI
             UiFactory.Layout(sizeLabel, preferredHeight: 46f);
 
             _sizeSelector = SegmentedControl.Build(root, "BoardSizeSelector",
-                new[] { "5 × 5", "6 × 6", "8 × 8" },
+                new[] { "5 × 5", "6 × 6", "7 × 7", "8 × 8" },
                 index => _gc.SetBoardSize(KnightLogic.BoardSizes[index])); // index → real size
 
             // --- Difficulty -------------------------------------------------
@@ -84,11 +84,11 @@ namespace Ghode.UI
             var newGame = UiFactory.CreateButton("NewGameButton", root, "New Game", 52,
                 () => _gc.NewGame(_gc.Settings.BoardSize),
                 UiFactory.Palette.Accent, UiFactory.Palette.Walnut); // the big golden go button
-            UiFactory.Layout(newGame, preferredHeight: 130f);
+            UiFactory.Layout(newGame, preferredHeight: 140f);
 
             var instructions = UiFactory.CreateButton("InstructionsButton", root, "How to Play", 44,
                 _gc.OpenInstructions);
-            UiFactory.Layout(instructions, preferredHeight: 100f);
+            UiFactory.Layout(instructions, preferredHeight: 132f);
 
             UiFactory.Spacer(root, 0.5f);
 
@@ -98,7 +98,7 @@ namespace Ghode.UI
             UiFactory.Layout(bestTitle, preferredHeight: 46f);
 
             _bestTimesText = UiFactory.CreateText("BestTimes", root, "", 42, UiFactory.Palette.Parchment);
-            UiFactory.Layout(_bestTimesText, preferredHeight: 160f);
+            UiFactory.Layout(_bestTimesText, preferredHeight: 210f); // four rows now (7×7 joined)
 
             UiFactory.Spacer(root, 1f);
         }

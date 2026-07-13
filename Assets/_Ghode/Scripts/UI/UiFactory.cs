@@ -149,7 +149,9 @@ namespace Ghode.UI
             // silently collapses to 0 px — only the overflowing label text
             // kept such buttons visible. Callers override via Layout(...);
             // buttons positioned by anchors ignore LayoutElement entirely.
-            Layout(button, preferredHeight: 96f);
+            // 132 ref-px ≈ 48 dp on the lowest-density phones we target, so
+            // the default also satisfies the touch-target audit.
+            Layout(button, preferredHeight: 132f);
 
             var text = CreateText("Label", image.transform, label, fontSize, textColor ?? Palette.Parchment);
             Fill((RectTransform)text.transform);

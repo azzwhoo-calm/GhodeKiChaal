@@ -9,6 +9,7 @@ using UnityEngine;
 using Ghode.Audio;
 using Ghode.Core;
 using Ghode.Data;
+using Ghode.Haptics;
 using AppScreen = Ghode.Core.Screen; // our enum; alias avoids UnityEngine.Screen clashes
 
 namespace Ghode.Game
@@ -66,9 +67,12 @@ namespace Ghode.Game
             Settings = SettingsStore.Load();
             Records = RecordsStore.Load();
 
-            // Make the sound desk match the loaded settings straight away.
+            // Make the sound desk match the loaded settings straight away,
+            // and the same for the vibration desk and the board's costume.
             Audio.SetMuted(!Settings.Sound);
             Audio.SetAmbience(Settings.Ambience);
+            HapticsService.Enabled = Settings.Haptics;
+            UI.GhodeTheme.Current = Settings.Theme;
         }
 
         /// <summary>
@@ -132,6 +136,7 @@ namespace Ghode.Game
             Timer.Reset();
             Timer.Start();
             Audio.Play(Sfx.SetDown);
+            HapticsService.Play(Haptic.Tick);
             RaiseChanged();
         }
 
@@ -147,6 +152,7 @@ namespace Ghode.Game
             {
                 // In plain words: the board said no — wrong shape or a used square.
                 Audio.Play(Sfx.InvalidThud);
+                HapticsService.Play(Haptic.Reject);
                 return;
             }
 
@@ -157,6 +163,7 @@ namespace Ghode.Game
                 Timer.Pause();
                 RecordFinished(won: true);
                 Audio.Play(Sfx.Win);
+                HapticsService.Play(Haptic.Win);
                 GoTo(AppScreen.Result);
                 return;
             }
@@ -168,11 +175,13 @@ namespace Ghode.Game
                 // The clock keeps running — they are still "in" the attempt.
                 _pendingLoss = true;
                 Audio.Play(Sfx.Lose);
+                HapticsService.Play(Haptic.Lose);
                 RaiseChanged();
                 return;
             }
 
             Audio.Play(Sfx.Hop);
+            HapticsService.Play(Haptic.Tick);
             RaiseChanged();
         }
 
@@ -336,6 +345,25 @@ namespace Ghode.Game
             Settings.ReducedMotion = on;
             SettingsStore.Save(Settings);
             RaiseChanged();
+        }
+
+        /// <summary>Vibration feedback on/off.</summary>
+        public void SetHaptics(bool on)
+        {
+            Settings.Haptics = on;
+            HapticsService.Enabled = on;
+            if (on) HapticsService.Play(Haptic.Tick); // instant "this is what it feels like"
+            SettingsStore.Save(Settings);
+            RaiseChanged();
+        }
+
+        /// <summary>Swap the board's costume (Wood / Ebony / Marble).</summary>
+        public void SetTheme(Theme theme)
+        {
+            Settings.Theme = theme;
+            UI.GhodeTheme.Current = theme;
+            SettingsStore.Save(Settings);
+            RaiseChanged(); // every view repaints, picking up the new colors
         }
 
         // ------------------------------------------------------------------

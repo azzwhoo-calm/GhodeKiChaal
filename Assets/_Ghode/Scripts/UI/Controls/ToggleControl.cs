@@ -25,7 +25,7 @@ namespace Ghode.UI
         public static ToggleControl Build(RectTransform parent, string name, string label, Action<bool> onChanged)
         {
             var rt = UiFactory.CreateRect(name, parent);
-            UiFactory.Layout(rt, preferredHeight: 96f);
+            UiFactory.Layout(rt, preferredHeight: 140f); // room for a 48 dp switch
             UiFactory.HStack(rt, 16f, new RectOffset(0, 0, 0, 0));
 
             var control = rt.gameObject.AddComponent<ToggleControl>();
@@ -39,9 +39,9 @@ namespace Ghode.UI
             // matters: the row's HStack CONTROLS child heights, and a plain
             // Image has no preferred size of its own — without this the
             // switch face collapses to 0 px tall (only its overflowing text
-            // kept it findable at all).
+            // kept it findable at all). 132 ref-px ≈ the 48 dp minimum.
             var button = UiFactory.CreateButton("Switch", rt, "Off", 40, control.HandleTap);
-            UiFactory.Layout(button, preferredHeight: 80f, flexibleWidth: 1f);
+            UiFactory.Layout(button, preferredHeight: 132f, flexibleWidth: 1f);
             control._face = button.GetComponent<Image>();
             control._stateLabel = button.GetComponentInChildren<Text>();
 

@@ -43,14 +43,14 @@ namespace Ghode.UI
             hintRt.sizeDelta = new Vector2(940f, 70f);
             hintRt.anchoredPosition = new Vector2(0f, -610f); // sits just under the board
 
-            // --- Pause button along the bottom edge -------------------------
+            // --- Pause button along the bottom edge (48 dp tall) ------------
             var pause = UiFactory.CreateButton("PauseButton", root.transform, "Pause", 44, gc.PauseGame);
             var pauseRt = (RectTransform)pause.transform;
             pauseRt.anchorMin = new Vector2(0f, 0f);
             pauseRt.anchorMax = new Vector2(1f, 0f);
             pauseRt.pivot = new Vector2(0.5f, 0f);
             pauseRt.offsetMin = new Vector2(90f, 40f);
-            pauseRt.offsetMax = new Vector2(-90f, 150f);
+            pauseRt.offsetMax = new Vector2(-90f, 172f);
 
             // --- The non-blocking "Stuck!" banner ----------------------------
             // In plain words: when the horse has no hop left we do NOT wipe the
@@ -61,8 +61,8 @@ namespace Ghode.UI
             bannerRt.anchorMin = new Vector2(0f, 0f);
             bannerRt.anchorMax = new Vector2(1f, 0f);
             bannerRt.pivot = new Vector2(0.5f, 0f);
-            bannerRt.offsetMin = new Vector2(40f, 180f);
-            bannerRt.offsetMax = new Vector2(-40f, 480f);
+            bannerRt.offsetMin = new Vector2(40f, 200f);
+            bannerRt.offsetMax = new Vector2(-40f, 530f);
             UiFactory.VStack(bannerRt, 14f, new RectOffset(24, 24, 22, 22));
 
             var stuckText = UiFactory.CreateText("StuckText", bannerRt,
@@ -71,7 +71,7 @@ namespace Ghode.UI
             UiFactory.Layout(stuckText, preferredHeight: 110f);
 
             var stuckButtons = UiFactory.CreateRect("StuckButtons", bannerRt);
-            UiFactory.Layout(stuckButtons, preferredHeight: 110f);
+            UiFactory.Layout(stuckButtons, preferredHeight: 140f); // 48 dp buttons
             UiFactory.HStack(stuckButtons, 14f, new RectOffset(0, 0, 0, 0));
 
             UiFactory.CreateButton("StuckUndo", stuckButtons, "Undo & keep trying", 34, gc.Undo,

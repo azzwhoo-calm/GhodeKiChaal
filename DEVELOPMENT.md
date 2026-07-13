@@ -103,6 +103,36 @@ round-robin through the six variants; mute is a 20 ms volume ramp. There is
 deliberately NO AudioMixer asset: mixers cannot be created from code, and two
 ramped sources deliver the same behavior at this scale.
 
+### Input, haptics & themes (Tier 5)
+
+**Drag (M1):** BoardView implements the uGUI drag interfaces (events bubble up
+from the tapped cell). A drag may only START on the horse's current square;
+dropping on a legal square moves (the piece settles under the finger),
+anywhere else glides it back. The 12 dp threshold is set on
+`EventSystem.pixelDragThreshold` by GameBootstrap; below it a gesture stays a
+tap, above it uGUI cancels the click itself — the two inputs cannot fight.
+
+**Haptics (M8):** `Ghode.Haptics.HapticsService` — Android
+`VibrationEffect`s (tick / double-reject / short-short-long win / soft-thud
+lose), no-op in the editor, master switch mirrors Settings.Haptics.
+NOTE: real buzz patterns are UNVERIFIED until the first device build.
+
+**Themes:** `GhodeTheme` (UI) holds three full color sets — Wood (the tile
+art), Ebony and Marble (flat recolors incl. their own label colors for
+readability). Views repaint from `GhodeTheme.Colors` on every StateChanged,
+so switching is `SetTheme` + repaint. Picker lives in the pause overlay;
+lock Ebony/Marble behind the Royal Stable entitlement when billing lands
+(flagged TODO). Per-theme frame/horse art is still an art-pipeline item —
+the skeleton tints the wood sprites.
+
+**48 dp audit:** every tappable control is ≥132 ref-px (≈48 dp on the
+lowest-density target) — enforced by `UiFactory.CreateButton`'s default plus
+explicit row heights. Documented exception: board CELLS on 6×6+ (a phone-wide
+chessboard cannot offer 48 dp squares; standard chess-app tradeoff). The
+pause panel auto-sizes (ContentSizeFitter), so new rows can't push buttons
+off-panel. Still open from the accessibility list: TalkBack/screen-reader
+support and the font-scale pass — both need on-device work.
+
 ### Art pipeline
 
 Sprites live in `Assets/_Ghode/Art/Resources/Ghode/` and load by name through
@@ -198,15 +228,21 @@ backgrounding auto-pause + quit-settles-stuck-loss, full baked SFX set with
 round-robin hops and 20 ms mute ramp. Every interactive control verified
 tappable via raycast-driven play-mode sweep (that sweep found and fixed the
 0-height button bug and the Instructions overflow that hid the Back button —
-the rules page now scrolls).
+the rules page now scrolls). Tier 5 (input & UX): drag-the-horse input with
+snap-back (12 dp threshold, taps unaffected), 7×7 board (+ solvability
+tests), haptics service + setting, Wood/Ebony/Marble theme skeleton with the
+pause-menu picker, and the 48 dp touch-target audit (0 failures across all
+screens; cells excepted).
 
 Next (in plan order — see `ghode_tracker.html`):
 
+- **First device build** + closed-track upload (starts the 14-day tester
+  clock) — keystore first (`Tools/create-release-keystore.ps1`). Also the
+  first chance to FEEL the haptic patterns and check themes on OLED.
 - **Save spec:** confirm record field names against the web version
   (`TODO(azzwhoo)` in `RecordsStore`) before anyone's records matter.
-- **First device build** + closed-track upload (starts the 14-day tester
-  clock) — keystore first (`Tools/create-release-keystore.ps1`).
-- **Audio polish:** A/B against the web version on speaker + earphones;
-  consider OGG re-encode of the ambience if AAB size ever matters.
-- Then: drag input, haptics, 7×7, themes, Play Games, billing, ads, analytics
-  (Tiers 5–8 in the tracker).
+- **Accessibility leftovers:** TalkBack/screen-reader pass + font ×1.3 pass
+  (both need a device).
+- Then Tiers 6–8: Play Games leaderboards, billing (lock Ebony/Marble
+  behind Royal Stable), AdMob+UMP, analytics/Crashlytics, release
+  engineering.
